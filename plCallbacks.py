@@ -20,6 +20,7 @@ from pytorch_lightning.utilities.model_summary import ModelSummary
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, Callback
 
 from albumentations.pytorch import ToTensorV2
+import wandb
 import warnings
 warnings.filterwarnings("ignore") # category=DeprecationWarning
 
@@ -78,9 +79,10 @@ class LogSegPredictionCallback(Callback):
                     if img_id == pl_module.cfg.vis_img_num - 1:
                         break
                 plt.show()
-                img_dir = os.path.join("/kaggle/working/", f"epoch{pl_module.current_epoch}_data_pred_vis.png")
+                img_dir = os.path.join(pl_module.cfg.vis_dir, f"epoch{pl_module.current_epoch}_data_pred_vis.png")
                 fig1.savefig(img_dir, bbox_inches='tight') 
-                wandb_logger.log_image(key=f"val_batch{batch_idx}_all", images=[img_dir])
+                # wandb_logger.log_image(key=f"val_batch{batch_idx}_all", images=[img_dir])
+                trainer.logger[1].experiment.log({f"val_batch{batch_idx}_all":[wandb.Image(img_dir, caption=f"val_batch{batch_idx}_all")]})
                 
                 # Four images and their preds are in different figures
                 fig2, axs2 = plt.subplots(2, 2, figsize=(30, 30)) 
@@ -108,10 +110,10 @@ class LogSegPredictionCallback(Callback):
                     
                     plt.show()
                     
-                    img_dir = os.path.join("/kaggle/working/", f"epoch{pl_module.current_epoch}_val_batch{batch_idx}_image{img_id}.png")
+                    img_dir = os.path.join(pl_module.cfg.vis_dir, f"epoch{pl_module.current_epoch}_val_batch{batch_idx}_image{img_id}.png")
                     fig2.savefig(img_dir, bbox_inches='tight') 
-                    wandb_logger.log_image(key=f"val_batch{batch_idx}_image{img_id}", images=[img_dir])
-                    
+                    # wandb_logger.log_image(key=f"val_batch{batch_idx}_image{img_id}", images=[img_dir])
+                    trainer.logger[1].experiment.log({f"val_batch{batch_idx}_image{img_id}":[wandb.Image(img_dir, caption=f"val_batch{batch_idx}_image{img_id}")]})
                     # Save only first 4 images in the batch
                     if img_id == pl_module.cfg.vis_img_num - 1:
                         break
@@ -151,9 +153,10 @@ class LogSegPredictionCallback(Callback):
                     if img_id == pl_module.cfg.vis_img_num - 1:
                         break
                 plt.show()
-                img_dir = os.path.join("/kaggle/working/", f"train_epoch{pl_module.current_epoch}_data_pred_vis.png")
+                img_dir = os.path.join(pl_module.cfg.vis_dir, f"train_epoch{pl_module.current_epoch}_data_pred_vis.png")
                 fig1.savefig(img_dir, bbox_inches='tight') 
-                wandb_logger.log_image(key=f"train_batch{batch_idx}_all", images=[img_dir])
+                # wandb_logger.log_image(key=f"train_batch{batch_idx}_all", images=[img_dir])
+                trainer.logger[1].experiment.log({f"train_batch{batch_idx}_all":[wandb.Image(img_dir, caption=f"train_batch{batch_idx}_all")]})
                 
                 # Four images and their preds are in different figures
                 fig2, axs2 = plt.subplots(2, 2, figsize=(30, 30)) 
@@ -181,9 +184,10 @@ class LogSegPredictionCallback(Callback):
                     
                     plt.show()
                     
-                    img_dir = os.path.join("/kaggle/working/", f"epoch{pl_module.current_epoch}_train_batch{batch_idx}_image{img_id}.png")
+                    img_dir = os.path.join(pl_module.cfg.vis_dir, f"epoch{pl_module.current_epoch}_train_batch{batch_idx}_image{img_id}.png")
                     fig2.savefig(img_dir, bbox_inches='tight') 
-                    wandb_logger.log_image(key=f"train_batch{batch_idx}_image{img_id}", images=[img_dir])
+                    # wandb_logger.log_image(key=f"train_batch{batch_idx}_image{img_id}", images=[img_dir])
+                    trainer.logger[1].experiment.log({f"train_batch{batch_idx}_image{img_id}":[wandb.Image(img_dir, caption=f"train_batch{batch_idx}_image{img_id}")]})
                     
                     # Save only first 4 images in the batch
                     if img_id == pl_module.cfg.vis_img_num - 1:
@@ -209,10 +213,8 @@ class LogSegPredOverlayCallback(Callback):
                 masks = [{"predictions": {"mask_data": (mask_pred > 0.5).float().cpu().detach().numpy().squeeze(), "class_labels": {1: "car"}},
                           "ground_truth": {"mask_data": mask_gt.cpu().detach().numpy().squeeze(), "class_labels": {1: "car"}}}
                           for mask_gt, mask_pred in zip(y, outputs["prob_y"])]
-            wandb_logger.log_image(
-                key=f"val_batch{batch_idx}_image{img_id}", 
-                images=images, 
-                masks=masks)
+            wandb_logger.log_image(key=f"val_batch{batch_idx}_image{img_id}", images=images, masks=masks)
+            # self.logger.experiment.log({f"val_batch{batch_idx}_image{img_id}":[wandb.Image(img_dir, caption=f"val_batch{batch_idx}_image{img_id}")]})
             
         
 

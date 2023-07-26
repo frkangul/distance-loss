@@ -42,14 +42,14 @@ cfg = {
         "proj_name": "foreground-car-segm",
     },
     "model_ckpt_motior": "val_per_image_bIoU",
-    "data_name": "CelebAMask-HQ-eyes",
+    "data_name": "CelebAMask-HQ",
     "output_class_num": 1,
     "mode": "binary",
-    "data_dir": "/kaggle/input/celebamask-hq-v3-eyes/CelebAMask-HQ-v3-eyes/",  
+    "data_dir": "./data/CelebAMask-HQ-v2/",
     "trainer": {
         "accelerator": "auto", # gpu, tpu, cpu, auto
         "device_num": 1, # Number of gpu, check if T4 vs P100
-        "precision": 16, # Double precision (64), full precision (32), half precision (16) or bfloat16 precision (bf16)
+        "precision": 32, # Double precision (64), full precision (32), half precision (16) or bfloat16 precision (bf16)
         "ckpt_path4resume": "/kaggle/input/epoch42-unet/epoch42-Unet-resnet34-lr0.0001-hight512-width512-dodspyne.ckpt",
     },
     "transform": {
@@ -77,7 +77,8 @@ cfg = {
     "SEED": 42,
     "vis_img_num": 8,
     "vis_val_batch_id": 5,
-    "ckpt_save_dir": '/kaggle/working/logs/lightning_logs/checkpoints/'
+    "vis_dir": "/home/furkan/distance-loss/resulting_imgs", 
+    "ckpt_save_dir": './logs/lightning_logs/checkpoints/'
 }
 
 WANDB_KEY="615a4a8c6b3ade78e75eba4a9c1ed70e4f564178"
