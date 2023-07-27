@@ -34,7 +34,7 @@ warnings.filterwarnings("ignore") # category=DeprecationWarning
 
 
 cfg = {
-    "max_epoch": 100,
+    "max_epoch": 60,
     "max_time": "02:23:55:00", 
     "distance_transform_loss": False,
     "wandb": {

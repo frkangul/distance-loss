@@ -1,3 +1,6 @@
 *.pem
 data/
 resulting_imgs/
+logs/
+wandb/
+__pycache__/
