@@ -1,4 +1,4 @@
-name: distance_loss
+name: distance-loss
 channels:
   - conda-forge
   - nodefaults

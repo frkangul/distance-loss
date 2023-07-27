@@ -8,7 +8,7 @@ api = wandb.Api(overrides={
         "project": "foreground-car-segm"
         })
 
-artifact_type, artifact_name = "model", "..." 
+artifact_type, artifact_name = "model", "model-lmwcg972" 
 for version in api.artifact_versions(artifact_type, artifact_name):
     print(version.aliases)
     if len(version.aliases) == 0:

@@ -34,8 +34,8 @@ warnings.filterwarnings("ignore") # category=DeprecationWarning
 
 
 cfg = {
-    "max_epoch": 60,
-    "max_time": "00:11:55:00", 
+    "max_epoch": 100,
+    "max_time": "02:23:55:00", 
     "distance_transform_loss": False,
     "wandb": {
         "exp_name": "dice",
@@ -49,12 +49,12 @@ cfg = {
     "trainer": {
         "accelerator": "auto", # gpu, tpu, cpu, auto
         "device_num": 1, # Number of gpu, check if T4 vs P100
-        "precision": 32, # Double precision (64), full precision (32), half precision (16) or bfloat16 precision (bf16)
-        "ckpt_path4resume": "/kaggle/input/epoch42-unet/epoch42-Unet-resnet34-lr0.0001-hight512-width512-dodspyne.ckpt",
+        "precision": 16, # Double precision (64), full precision (32), half precision (16) or bfloat16 precision (bf16)
+        "ckpt_path4resume": "model.ckpt",
     },
     "transform": {
-        "image_resize_h": 256, # 576
-        "image_resize_w": 256, # 800
+        "image_resize_h": 512, # 576
+        "image_resize_w": 512, # 800
     },
     "model": {
         "model_name": "Unet", # "DeepLabV3Plus", "UnetPlusPlus", "Unet"
@@ -66,18 +66,18 @@ cfg = {
     },   
     "patience": 20, # for validation loss
     "train_dl": {
-        "batch_size": 32,
+        "batch_size": 128,
     },
     "val_dl": {
-        "batch_size": 32,
+        "batch_size": 128,
     },
     "test_dl": {
-        "batch_size": 32,
+        "batch_size": 128,
     },
     "SEED": 42,
     "vis_img_num": 8,
     "vis_val_batch_id": 5,
-    "vis_dir": "/home/furkan/distance-loss/resulting_imgs", 
+    "vis_dir": "./resulting_imgs/CelebAMask-HQ_512_dice_unet_r50", 
     "ckpt_save_dir": './logs/lightning_logs/checkpoints/'
 }
 
