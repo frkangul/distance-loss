@@ -36,9 +36,9 @@ warnings.filterwarnings("ignore") # category=DeprecationWarning
 cfg = {
     "max_epoch": 60,
     "max_time": "02:23:55:00", 
-    "distance_transform_loss": True,
+    "distance_transform_loss": False,
     "wandb": {
-        "exp_name": "distance_transform",
+        "exp_name": "dice&bce",
         "proj_name": "foreground-car-segm",
     },
     "model_ckpt_motior": "val_per_image_bIoU",
