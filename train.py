@@ -38,7 +38,7 @@ cfg = {
     "max_time": "02:23:55:00", 
     "distance_transform_loss": False,
     "wandb": {
-        "exp_name": "iou",
+        "exp_name": "bce",
         "proj_name": "foreground-car-segm",
     },
     "model_ckpt_motior": "val_per_image_bIoU",
@@ -77,7 +77,7 @@ cfg = {
     "SEED": 42,
     "vis_img_num": 8,
     "vis_val_batch_id": 5,
-    "vis_dir": "./resulting_imgs/CelebAMask-HQ_512_iou_unet_r50", 
+    "vis_dir": "./resulting_imgs/CelebAMask-HQ_512_bce_unet_r50", 
     "ckpt_save_dir": './logs/lightning_logs/checkpoints/'
 }
 

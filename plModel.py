@@ -65,10 +65,10 @@ class ImageSegModel(pl.LightningModule):
             self.loss_distance = DistanceLoss(BINARY_MODE, from_logits=True)
         else:
             # self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
-            # self.loss_bce = BCEWithLogitsLoss()
+            self.loss_bce = BCEWithLogitsLoss()
             # self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
             # self.loss_focal = smp.losses.FocalLoss(smp.losses.BINARY_MODE) # it uses focal_loss_with_logits
-            self.loss_iou = smp.losses.JaccardLoss(smp.losses.BINARY_MODE, from_logits=True)
+            # self.loss_iou = smp.losses.JaccardLoss(smp.losses.BINARY_MODE, from_logits=True)
         self.distance_transform_metric = DistanceLoss(BINARY_MODE, from_logits=False)
         
         self.save_hyperparameters(ignore=["model"])
@@ -111,9 +111,9 @@ class ImageSegModel(pl.LightningModule):
             loss = self.loss_distance(logits_y, y_distance, y_distance_sum)
         else:
             # loss_dice = self.loss_dice(logits_y, y)
-            # loss_bce = self.loss_bce(logits_y, y)
-            loss_iou = self.loss_iou(logits_y, y)
-            loss = loss_iou # loss_dice
+            loss_bce = self.loss_bce(logits_y, y)
+            # loss_iou = self.loss_iou(logits_y, y)
+            loss = loss_bce # loss_iou # loss_dice
             # loss = loss_dice + loss_bce
             # loss_dice = self.loss_dice(logits_y, y)
             # loss_focal = self.loss_focal(logits_y, y)
