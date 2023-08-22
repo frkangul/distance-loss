@@ -117,6 +117,34 @@ def seed_everything(seed: int):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+def setup_pl_callbacks():
+    model_checkpointer = ModelCheckpoint(
+        monitor=cfg.model_ckpt_motior,
+        mode="max", # log model only if `val_per_image_iou` increases
+        save_top_k=1, # to save the best model. save_top_k=-1 to save all models
+        # every_n_epochs=5, # to save at every n epochs
+        save_last=True,
+        # To save locally:
+        dirpath=cfg.ckpt_save_dir,
+        filename='{epoch}-'+f'{cfg.model.model_name}-{cfg.model.encoder_name}-lr{cfg.optimizer.lr}-hight{cfg.transform.image_resize_h}-width{cfg.transform.image_resize_w}-{cfg.data_name}'
+    )
+
+    earlystop_checkpointer = EarlyStopping(
+        monitor="val_loss", mode="min", patience=cfg.patience, verbose=True
+    ) # verbose = 0, means silent.
+
+    lr_monitor = LearningRateMonitor() # logging_interval='epoch'/'step'. Set to None to log at individual interval according to the interval key of each scheduler
+    
+    callbacks = [
+        TQDMProgressBar(refresh_rate=20), # for notebook usage
+        # earlystop_checkpointer,
+        model_checkpointer,
+        LogSegPredictionCallback(),
+        lr_monitor,
+        # ReduceLROnPlateauOptCallback()
+    ]
+    return callbacks
     
 def pipeline():
     cfg = Box(cfg)
@@ -146,37 +174,16 @@ def pipeline():
     wandb.define_metric('val_distance_transform_evalmetric', summary='max')
     wandb.define_metric('train_loss', summary='min')
     wandb.define_metric('val_loss', summary='min')
-
-    model_checkpointer = ModelCheckpoint(
-        monitor=cfg.model_ckpt_motior,
-        mode="max", # log model only if `val_per_image_iou` increases
-        save_top_k=1, # to save the best model. save_top_k=-1 to save all models
-        # every_n_epochs=5, # to save at every n epochs
-        save_last=True,
-        # To save locally:
-        dirpath=cfg.ckpt_save_dir,
-        filename='{epoch}-'+f'{cfg.model.model_name}-{cfg.model.encoder_name}-lr{cfg.optimizer.lr}-hight{cfg.transform.image_resize_h}-width{cfg.transform.image_resize_w}-{cfg.data_name}'
-    )
-
-    earlystop_checkpointer = EarlyStopping(
-        monitor="val_loss", mode="min", patience=cfg.patience, verbose=True
-    ) # verbose = 0, means silent.
-
-    lr_monitor = LearningRateMonitor() # logging_interval='epoch'/'step'. Set to None to log at individual interval according to the interval key of each scheduler
     
+    callbacks = setup_pl_callbacks()
+
     trainer = pl.Trainer(
         max_epochs=cfg.max_epoch,
         max_time=cfg.max_time, # Stop after max_time hours of training or when reaching max_epochs epochs
         precision=cfg.trainer.precision, # Mixed Precision (16-bit) combines the use of both 32 and 16-bit floating points to reduce memory footprint
         accelerator=cfg.trainer.accelerator, # gpu, tpu, auto
         devices=cfg.trainer.device_num,
-        callbacks=[TQDMProgressBar(refresh_rate=20), # for notebook usage
-                # earlystop_checkpointer,
-                model_checkpointer,
-                LogSegPredictionCallback(),
-                lr_monitor,
-                # ReduceLROnPlateauOptCallback()
-                ],
+        callbacks= callbacks,
         logger=[CSVLogger(save_dir="logs/"), wandb_logger], # multiple loggers
         strategy=None if cfg.trainer.device_num==1 else 'dp', # 'dp' strategy is used when multiple-gpus with 1 machine.
         deterministic=True, # for reproducibity
