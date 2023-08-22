@@ -32,6 +32,7 @@ from plModel import ImageSegModel
 import customDatasets
 warnings.filterwarnings("ignore") # category=DeprecationWarning
 
+WANDB_KEY="615a4a8c6b3ade78e75eba4a9c1ed70e4f564178"
 
 cfg = {
     "max_epoch": 60,
@@ -81,8 +82,32 @@ cfg = {
     "ckpt_save_dir": './logs/lightning_logs/checkpoints/'
 }
 
-WANDB_KEY="615a4a8c6b3ade78e75eba4a9c1ed70e4f564178"
-
+transforms = {
+    "train": A.Compose([
+        # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
+        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
+        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_REFLECT_101),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
+        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
+        ]),
+    "val": A.Compose([
+        # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
+        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
+        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
+        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
+    ]),
+    "test": A.Compose([
+        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
+        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
+        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
+    ]),
+    "unnorm": A.Compose([
+        A.Normalize(mean=(-0.485/0.229, -0.456/0.224, -0.406/0.225), std=(1.0/0.229, 1.0/0.224, 1.0/0.225), max_pixel_value=1.0),
+        ToTensorV2()
+        ]) # -mean / std, 1.0 / std for unnormalization
+}
 
 def seed_everything(seed: int):  
     random.seed(seed)
@@ -93,42 +118,14 @@ def seed_everything(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     
-if __name__ == "__main__":
+def pipeline():
     cfg = Box(cfg)
     pprint(cfg)
     
     wandb.login(key=WANDB_KEY)
     seed_everything(cfg.SEED)
     
-    train_transform = A.Compose([
-        # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
-        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
-        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_REFLECT_101),
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-        ])
-
-    val_transform = A.Compose([
-        # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
-        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
-        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-    ])
-
-    test_transform = A.Compose([
-        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
-        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-    ])
-
-    unnorm_transform = A.Compose([
-        A.Normalize(mean=(-0.485/0.229, -0.456/0.224, -0.406/0.225), std=(1.0/0.229, 1.0/0.224, 1.0/0.225), max_pixel_value=1.0),
-        ToTensorV2()
-        ]) # -mean / std, 1.0 / std for unnormalization
-    
-    model = ImageSegModel(cfg, train_transform, val_transform, test_transform, unnorm_transform)
+    model = ImageSegModel(cfg, transforms["train"], transforms["val"], transforms["test"], transforms["unnorm"])
     ModelSummary(model) #to see detailed layer based parameter nums max_depth=-1
     
     wandb_logger = WandbLogger(
@@ -190,3 +187,6 @@ if __name__ == "__main__":
     trainer.test(model, ckpt_path="best") # ckpt_path="last" to load and evaluate the last model
     
     wandb.finish()
+
+if __name__ == "__main__":
+    pipeline()
