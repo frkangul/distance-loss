@@ -110,6 +110,13 @@ transforms = {
 }
 
 def seed_everything(seed: int):  
+    """
+    Sets the seed for generating random numbers. This is used for reproducibility in experiments.
+
+    Args:
+        seed (int): The seed value to be set for generating random numbers.
+    """
+
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -118,7 +125,50 @@ def seed_everything(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+
+def setup_wandb_and_logger():
+    """
+    Logs in to Weights & Biases using the provided key, sets up the logger, and defines the metrics to track.
+
+    Returns:
+        wandb_logger (WandbLogger): The Weights & Biases logger.
+    """
+
+    wandb.login(key=WANDB_KEY)
+
+    # WandbLogger automatically handles the start and end of the Weights & Biases run. 
+    # It calls wandb.init() when the Trainer starts and wandb.finish() when the Trainer finishes
+    wandb_logger = WandbLogger(
+        project=cfg.wandb.proj_name,
+        name=f"{cfg.model.model_name}/{cfg.model.encoder_name}/{cfg.wandb.exp_name}",
+        group= f"{cfg.model.model_name}/{cfg.model.encoder_name}/{cfg.data_name}",
+        log_model="all", # model checkpoints are logged during training
+    )
+
+    # W&B summary metric to display the min, max, mean or best value for that metric
+    wandb.define_metric('train_per_image_dice', summary='max')
+    wandb.define_metric('val_per_image_dice', summary='max')
+    wandb.define_metric('train_per_image_iou', summary='max')
+    wandb.define_metric('val_per_image_iou', summary='max')
+    wandb.define_metric('train_per_image_bIoU', summary='max')
+    wandb.define_metric('val_per_image_bIoU', summary='max')
+    wandb.define_metric('train_distance_transform_evalmetric', summary='max')
+    wandb.define_metric('val_distance_transform_evalmetric', summary='max')
+    wandb.define_metric('train_loss', summary='min')
+    wandb.define_metric('val_loss', summary='min')
+
+    return wandb_logger
+    
+
 def setup_pl_callbacks():
+    """
+    Sets up the PyTorch Lightning callbacks for the training process. These include model checkpointing, 
+    early stopping, learning rate monitoring, and others.
+
+    Returns:
+        callbacks (list): A list of PyTorch Lightning callbacks.
+    """
+    
     model_checkpointer = ModelCheckpoint(
         monitor=cfg.model_ckpt_motior,
         mode="max", # log model only if `val_per_image_iou` increases
@@ -146,35 +196,22 @@ def setup_pl_callbacks():
     ]
     return callbacks
     
+
 def pipeline():
+    """
+    The main pipeline function that sets up the configuration, seeds, logger, model, callbacks, and trainer.
+    It then starts the training process and finally tests the model.
+    """
+    
     cfg = Box(cfg)
     pprint(cfg)
-    
-    wandb.login(key=WANDB_KEY)
+
     seed_everything(cfg.SEED)
+    wandb_logger = setup_wandb_and_logger()
     
     model = ImageSegModel(cfg, transforms["train"], transforms["val"], transforms["test"], transforms["unnorm"])
     ModelSummary(model) #to see detailed layer based parameter nums max_depth=-1
-    
-    wandb_logger = WandbLogger(
-        project=cfg.wandb.proj_name,
-        name=f"{cfg.model.model_name}/{cfg.model.encoder_name}/{cfg.wandb.exp_name}",
-        group= f"{cfg.model.model_name}/{cfg.model.encoder_name}/{cfg.data_name}",
-        log_model="all", # model checkpoints are logged during training
-    )
-    wandb_logger.watch(model, log="all") # log and monitor gradients, parameter histogram and model topology as we train  
-    # W&B summary metric to display the min, max, mean or best value for that metric
-    wandb.define_metric('train_per_image_dice', summary='max')
-    wandb.define_metric('val_per_image_dice', summary='max')
-    wandb.define_metric('train_per_image_iou', summary='max')
-    wandb.define_metric('val_per_image_iou', summary='max')
-    wandb.define_metric('train_per_image_bIoU', summary='max')
-    wandb.define_metric('val_per_image_bIoU', summary='max')
-    wandb.define_metric('train_distance_transform_evalmetric', summary='max')
-    wandb.define_metric('val_distance_transform_evalmetric', summary='max')
-    wandb.define_metric('train_loss', summary='min')
-    wandb.define_metric('val_loss', summary='min')
-    
+
     callbacks = setup_pl_callbacks()
 
     trainer = pl.Trainer(
@@ -189,11 +226,12 @@ def pipeline():
         deterministic=True, # for reproducibity
     )
     
+    wandb_logger.watch(model, log="all") # log and monitor gradients, parameter histogram and model topology as we train  
+
     trainer.fit(model) # ckpt_path=cfg.trainer.ckpt_path4resume, ckpt_path="best"
     
     trainer.test(model, ckpt_path="best") # ckpt_path="last" to load and evaluate the last model
-    
-    wandb.finish()
+
 
 if __name__ == "__main__":
     pipeline()
