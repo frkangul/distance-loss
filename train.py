@@ -46,16 +46,17 @@ cfg = {
     "data_name": "CelebAMask-HQ",
     "output_class_num": 1,
     "mode": "binary",
-    "data_dir": "./data/CelebAMask-HQ-v2/",
+    "data_dir": "/kaggle/input/celebamask-hq-v2/CelebAMask-HQ-v2/",
     "trainer": {
         "accelerator": "auto", # gpu, tpu, cpu, auto
-        "device_num": 1, # Number of gpu, check if T4 vs P100
+        "device_num": 2, # Number of gpu, check if T4 vs P100
         "precision": 16, # Double precision (64), full precision (32), half precision (16) or bfloat16 precision (bf16)
-        "ckpt_path4resume": "model.ckpt",
+        "deterministic": True, # for reproducibity. If True, sets whether PyTorch operations must use deterministic algorithms. Set to "warn" to use deterministic algorithms whenever possible. "warn" for DeepLabV3Plus.
+        "ckpt_path4resume": "/kaggle/input/epoch42-unet/epoch42-Unet-resnet34-lr0.0001-hight512-width512-dodspyne.ckpt",
     },
     "transform": {
-        "image_resize_h": 512, # 576
-        "image_resize_w": 512, # 800
+        "image_resize_h": 256, # 576
+        "image_resize_w": 256, # 800
     },
     "model": {
         "model_name": "Unet", # "DeepLabV3Plus", "UnetPlusPlus", "Unet"
@@ -67,46 +68,19 @@ cfg = {
     },   
     "patience": 20, # for validation loss
     "train_dl": {
-        "batch_size": 128,
+        "batch_size": 32,
     },
     "val_dl": {
-        "batch_size": 128,
+        "batch_size": 32,
     },
     "test_dl": {
-        "batch_size": 128,
+        "batch_size": 32,
     },
     "SEED": 42,
     "vis_img_num": 8,
     "vis_val_batch_id": 5,
-    "vis_dir": "./resulting_imgs/CelebAMask-HQ_512_bce_unet_r50", 
-    "ckpt_save_dir": './logs/lightning_logs/checkpoints/'
-}
-
-transforms = {
-    "train": A.Compose([
-        # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
-        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
-        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_REFLECT_101),
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-        ]),
-    "val": A.Compose([
-        # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
-        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
-        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-    ]),
-    "test": A.Compose([
-        A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
-        A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-        ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-    ]),
-    "unnorm": A.Compose([
-        A.Normalize(mean=(-0.485/0.229, -0.456/0.224, -0.406/0.225), std=(1.0/0.229, 1.0/0.224, 1.0/0.225), max_pixel_value=1.0),
-        ToTensorV2()
-        ]) # -mean / std, 1.0 / std for unnormalization
+    "vis_dir": "/kaggle/working", 
+    "ckpt_save_dir": '/kaggle/working/logs/lightning_logs/checkpoints/'
 }
 
 def seed_everything(seed: int):  
@@ -197,18 +171,42 @@ def setup_pl_callbacks():
     return callbacks
     
 
-def pipeline():
+def pipeline(cfg):
     """
     The main pipeline function that sets up the configuration, seeds, logger, model, callbacks, and trainer.
     It then starts the training process and finally tests the model.
     """
-    
-    cfg = Box(cfg)
-    pprint(cfg)
 
     seed_everything(cfg.SEED)
     wandb_logger = setup_wandb_and_logger()
     
+    transforms = {
+        "train": A.Compose([
+            # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
+            A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
+            A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_REFLECT_101),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
+            ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
+            ]),
+        "val": A.Compose([
+            # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
+            A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
+            A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
+            ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
+        ]),
+        "test": A.Compose([
+            A.LongestMaxSize(max(cfg.transform.image_resize_h, cfg.transform.image_resize_w)),
+            A.PadIfNeeded(min_height=cfg.transform.image_resize_h, min_width=cfg.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
+            ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
+        ]),
+        "unnorm": A.Compose([
+            A.Normalize(mean=(-0.485/0.229, -0.456/0.224, -0.406/0.225), std=(1.0/0.229, 1.0/0.224, 1.0/0.225), max_pixel_value=1.0),
+            ToTensorV2()
+            ]) # -mean / std, 1.0 / std for unnormalization
+    }
+
     model = ImageSegModel(cfg, transforms["train"], transforms["val"], transforms["test"], transforms["unnorm"])
     ModelSummary(model) #to see detailed layer based parameter nums max_depth=-1
 
@@ -223,7 +221,7 @@ def pipeline():
         callbacks= callbacks,
         logger=[CSVLogger(save_dir="logs/"), wandb_logger], # multiple loggers
         strategy=None if cfg.trainer.device_num==1 else 'dp', # 'dp' strategy is used when multiple-gpus with 1 machine.
-        deterministic=True, # for reproducibity
+        deterministic=cfg.trainer.deterministic, # for reproducibity. 'warn' to use deterministic algorithms whenever possible
     )
     
     wandb_logger.watch(model, log="all") # log and monitor gradients, parameter histogram and model topology as we train  
@@ -234,4 +232,7 @@ def pipeline():
 
 
 if __name__ == "__main__":
-    pipeline()
+    cfg = Box(cfg)
+    pprint(cfg)
+
+    pipeline(cfg)
