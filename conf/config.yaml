@@ -1,0 +1,28 @@
+defaults:
+  - dataset: celebAMask-HQ
+  - server: kaggle_T4
+
+exp:
+  loss: bce # dist_transform, bce, iou, dice, dice&bce, dice&focal
+  deterministic: true # for reproducibity. If True, sets whether PyTorch operations must use deterministic algorithms. Set to "warn" to use deterministic algorithms whenever possible. "warn" for DeepLabV3Plus.
+  model_name: Unet # "DeepLabV3Plus", "UnetPlusPlus", "Unet"
+  encoder_name: resnet50 # "efficientnet-b5","resnet34", "mit_b1"       
+  SEED: 42
+  wandb:
+    exp_name: T4_deneme
+    proj_name: foreground-car-segm
+
+trainer:
+  max_epoch: 60
+  max_time: 02:23:55:00
+  model_ckpt_motior: val_per_image_bIoU
+  ckpt_save_dir: /kaggle/working/logs/lightning_logs/checkpoints/
+  ckpt_path4resume: /kaggle/input/epoch42-unet/epoch42-Unet-resnet34-lr0.0001-hight512-width512-dodspyne.ckpt
+  lr: 0.0003 # 0.001, 0.0003
+  reduce_rl_on: false
+  patience: 20 # for validation loss
+  
+vis:
+  vis_img_num: 8
+  vis_val_batch_id: 5
+  vis_dir: /kaggle/working

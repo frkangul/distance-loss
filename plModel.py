@@ -48,11 +48,11 @@ class ImageSegModel(pl.LightningModule):
         # Define PyTorch model, model weights are in cuda
         encoder_weights = "imagenet"
         input_channels = 3
-        self.model = smp.create_model(arch=cfg.model.model_name,
-                                      encoder_name=cfg.model.encoder_name,
+        self.model = smp.create_model(arch=cfg.exp.model_name,
+                                      encoder_name=cfg.exp.encoder_name,
                                       encoder_weights=encoder_weights,
                                       in_channels=input_channels,
-                                      classes=cfg.output_class_num)
+                                      classes=cfg.dataset.output_class_num)
         
         # Preprocessing/Transformations  
         self.train_transform = train_transform
@@ -61,18 +61,18 @@ class ImageSegModel(pl.LightningModule):
         self.unnorm_transform = unnorm_transform
 
         # Define loss. If predicted mask contains logits, and loss param `from_logits` is set to True
-        if cfg.loss == "dist_transform":
+        if cfg.exp.loss == "dist_transform":
             self.loss = DistanceLoss(BINARY_MODE, from_logits=True)
-        elif cfg.loss == "bce":
+        elif cfg.exp.loss == "bce":
             self.loss = BCEWithLogitsLoss()
-        elif cfg.loss == "iou":
+        elif cfg.exp.loss == "iou":
             self.loss = smp.losses.JaccardLoss(smp.losses.BINARY_MODE, from_logits=True)
-        elif cfg.loss == "dice":
+        elif cfg.exp.loss == "dice":
             self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
-        elif cfg.loss == "dice&bce":
+        elif cfg.exp.loss == "dice&bce":
             self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
             self.loss_bce = BCEWithLogitsLoss()
-        elif cfg.loss == "dice&focal":
+        elif cfg.exp.loss == "dice&focal":
             self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
             self.loss_focal = smp.losses.FocalLoss(smp.losses.BINARY_MODE) # it uses focal_loss_with_logits
         self.distance_transform_metric = DistanceLoss(BINARY_MODE, from_logits=False)
@@ -113,11 +113,11 @@ class ImageSegModel(pl.LightningModule):
         boundary_y = mask_to_boundary_tensor(y, dilation_ratio=0.02)
         boundary_pred_y = mask_to_boundary_tensor(prob_y, dilation_ratio=0.02)
    
-        if self.cfg.loss == "dist_transform":
+        if self.cfg.exp.loss == "dist_transform":
             loss = self.loss(logits_y, y_distance, y_distance_sum)
-        elif self.cfg.loss == "dice&bce":
+        elif self.cfg.exp.loss == "dice&bce":
             loss = self.loss_dice(logits_y, y) + self.loss_bce(logits_y, y)
-        elif self.cfg.loss == "dice&focal":
+        elif self.cfg.exp.loss == "dice&focal":
             loss = self.loss_dice(logits_y, y) + self.focal(logits_y, y)
         else: # when using single loss function
             loss = self.loss(logits_y, y)
@@ -128,7 +128,7 @@ class ImageSegModel(pl.LightningModule):
         #   2. image-wise
         # but for now we just compute true positive, false positive, false negative and true negative 'pixels' for each image and class
         # these values will be aggregated in the end of an epoch
-        tp, fp, fn, tn = smp.metrics.get_stats(pred_y_th.long(), y.long(), mode=self.cfg.mode, num_classes=self.cfg.output_class_num)
+        tp, fp, fn, tn = smp.metrics.get_stats(pred_y_th.long(), y.long(), mode=self.cfg.dataset.mode, num_classes=self.cfg.dataset.output_class_num)
         
         # Extract tp, fp, fn, tn for boundary iou 
         boundary_pred_y_th = mask_to_boundary_tensor(pred_y_th, dilation_ratio=0.02)
@@ -239,8 +239,8 @@ class ImageSegModel(pl.LightningModule):
             
     def configure_optimizers(self):
         '''defines model optimizer and scheduler'''
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.optimizer.lr)
-        if self.cfg.optimizer.reduce_rl_on:          
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.trainer.lr)
+        if self.cfg.trainer.reduce_rl_on:          
             # It is called automatic optimization if `scheduler.step()` is not called manually inside pl.LightningModule. Otherwise, it is manuel optimization
             scheduler = ReduceLROnPlateau(optimizer, mode="min", patience=5, factor=0.5, min_lr=1e-7) # ReduceLROnPlateauOptimized
             return {
@@ -263,27 +263,27 @@ class ImageSegModel(pl.LightningModule):
     def setup(self, stage=None):
         # Assign train/val datasets for use in dataloaders
         if stage == "fit" or stage is None:
-            full_ds = CocoToSmpDataset(root=os.path.join(self.cfg.data_dir, "train"), 
-                                       annFile=os.path.join(self.cfg.data_dir, "annotations_train.json")
+            full_ds = CocoToSmpDataset(root=os.path.join(self.cfg.dataset.data_dir, "train"), 
+                                       annFile=os.path.join(self.cfg.dataset.data_dir, "annotations_train.json")
                                        )
             # Train-val split before appliying transformations
             train_subset, val_subset = random_split(full_ds, [0.8, 0.2],
-                                                      generator=torch.Generator().manual_seed(self.cfg.SEED))
+                                                      generator=torch.Generator().manual_seed(self.cfg.exp.SEED))
             # Apply transformations to each subset
             self.train_ds = DatasetFromSubset(train_subset, transforms=self.train_transform)
             self.val_ds = DatasetFromSubset(val_subset, transforms=self.val_transform)
         # Assign test dataset for use in dataloader(s)
         if stage == "test" or stage is None:
-            self.test_ds = CocoToSmpDataset(root=os.path.join(self.cfg.data_dir, "test"), 
-                                            annFile=os.path.join(self.cfg.data_dir, "annotations_test.json"),
+            self.test_ds = CocoToSmpDataset(root=os.path.join(self.cfg.dataset.data_dir, "test"), 
+                                            annFile=os.path.join(self.cfg.dataset.data_dir, "annotations_test.json"),
                                             transforms=self.test_transform)
             
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.cfg.train_dl.batch_size, shuffle=True, num_workers=self.n_cpu, pin_memory=True)
+        return DataLoader(self.train_ds, batch_size=self.cfg.dataset.train_dl_batchsize, shuffle=True, num_workers=self.n_cpu, pin_memory=True)
         # pin_memory will put the fetched data Tensors in pinned memory, and thus enables faster data transfer to CUDA-enabled GPUs
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=self.cfg.val_dl.batch_size, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
+        return DataLoader(self.val_ds, batch_size=self.cfg.dataset.val_dl_batchsize, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
 
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.cfg.test_dl.batch_size, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
+        return DataLoader(self.test_ds, batch_size=self.cfg.dataset.test_dl_batchsize, shuffle=False, num_workers=self.n_cpu, pin_memory=True)

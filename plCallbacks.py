@@ -48,13 +48,13 @@ class LogSegPredictionCallback(Callback):
         """Called when the validation batch ends."""
         # outputs: The outputs of validation_step_end(validation_step(x))
         # Let's log all sample image predictions from the fifth batch
-        if batch_idx == pl_module.cfg.vis_val_batch_id: 
+        if batch_idx == pl_module.cfg.vis.vis_val_batch_id: 
             with torch.no_grad():   
                 # x, y = batch["image"], batch["mask"]
                 x, y, y_distance, y_distance_sum = batch["image"], batch["mask"], batch["distance_mask"], batch["distance_mask_sum"]
                 
                 # All five images and preds in one figure
-                fig1, axs1 = plt.subplots(pl_module.cfg.vis_img_num, 5, figsize=(50, 50)) # pl_module.cfg.val_dl.batch_size
+                fig1, axs1 = plt.subplots(pl_module.cfg.vis.vis_img_num, 5, figsize=(50, 50)) # pl_module.cfg.vis.val_dl.batch_size
                 for img_id, (img_gt, mask_gt, mask_dist_gt, mask_pred) in enumerate(zip(x, y, y_distance, outputs["prob_y"])): # [1, num_channels, height, width]
                     mask_pred_th = (mask_pred > 0.5).float()
                     un_img = img_gt.cpu().numpy().squeeze().transpose(1, 2, 0) # for visualization we have to transpose back to HWC
@@ -76,10 +76,10 @@ class LogSegPredictionCallback(Callback):
                     axs1[img_id, 4].set_title("Pred-Mask Thresholded", fontsize=30)
                     
                     # Save only first 4 images in the batch
-                    if img_id == pl_module.cfg.vis_img_num - 1:
+                    if img_id == pl_module.cfg.vis.vis_img_num - 1:
                         break
                 plt.show()
-                img_dir = os.path.join(pl_module.cfg.vis_dir, f"epoch{pl_module.current_epoch}_data_pred_vis.png")
+                img_dir = os.path.join(pl_module.cfg.vis.vis_dir, f"epoch{pl_module.current_epoch}_data_pred_vis.png")
                 fig1.savefig(img_dir, bbox_inches='tight') 
                 # wandb_logger.log_image(key=f"val_batch{batch_idx}_all", images=[img_dir])
                 trainer.logger[1].experiment.log({f"val_batch{batch_idx}_all":[wandb.Image(img_dir, caption=f"val_batch{batch_idx}_all")]})
@@ -110,25 +110,25 @@ class LogSegPredictionCallback(Callback):
                     
                     plt.show()
                     
-                    img_dir = os.path.join(pl_module.cfg.vis_dir, f"epoch{pl_module.current_epoch}_val_batch{batch_idx}_image{img_id}.png")
+                    img_dir = os.path.join(pl_module.cfg.vis.vis_dir, f"epoch{pl_module.current_epoch}_val_batch{batch_idx}_image{img_id}.png")
                     fig2.savefig(img_dir, bbox_inches='tight') 
                     # wandb_logger.log_image(key=f"val_batch{batch_idx}_image{img_id}", images=[img_dir])
                     trainer.logger[1].experiment.log({f"val_batch{batch_idx}_image{img_id}":[wandb.Image(img_dir, caption=f"val_batch{batch_idx}_image{img_id}")]})
                     # Save only first 4 images in the batch
-                    if img_id == pl_module.cfg.vis_img_num - 1:
+                    if img_id == pl_module.cfg.vis.vis_img_num - 1:
                         break
                         
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         """Called when the train batch ends."""
         # outputs: The outputs of train_step_end(train_step(x))??
         # Let's log all sample image predictions from the fifth batch
-        if batch_idx == pl_module.cfg.vis_val_batch_id: 
+        if batch_idx == pl_module.cfg.vis.vis_val_batch_id: 
             with torch.no_grad():   
                 # x, y = batch["image"], batch["mask"]
                 x, y, y_distance, y_distance_sum = batch["image"], batch["mask"], batch["distance_mask"], batch["distance_mask_sum"]
                 
                 # All five images and preds in one figure
-                fig1, axs1 = plt.subplots(pl_module.cfg.vis_img_num, 5, figsize=(50, 50)) # pl_module.cfg.val_dl.batch_size
+                fig1, axs1 = plt.subplots(pl_module.cfg.vis.vis_img_num, 5, figsize=(50, 50)) # pl_module.cfg.vis.val_dl.batch_size
                 for img_id, (img_gt, mask_gt, mask_dist_gt, mask_pred) in enumerate(zip(x, y, y_distance, outputs["prob_y"])): # [1, num_channels, height, width]
                     mask_pred_th = (mask_pred > 0.5).float()
                     un_img = img_gt.cpu().numpy().squeeze().transpose(1, 2, 0) # for visualization we have to transpose back to HWC
@@ -150,10 +150,10 @@ class LogSegPredictionCallback(Callback):
                     axs1[img_id, 4].set_title("Pred-Mask Thresholded", fontsize=30)
                     
                     # Save only first 4 images in the batch
-                    if img_id == pl_module.cfg.vis_img_num - 1:
+                    if img_id == pl_module.cfg.vis.vis_img_num - 1:
                         break
                 plt.show()
-                img_dir = os.path.join(pl_module.cfg.vis_dir, f"train_epoch{pl_module.current_epoch}_data_pred_vis.png")
+                img_dir = os.path.join(pl_module.cfg.vis.vis_dir, f"train_epoch{pl_module.current_epoch}_data_pred_vis.png")
                 fig1.savefig(img_dir, bbox_inches='tight') 
                 # wandb_logger.log_image(key=f"train_batch{batch_idx}_all", images=[img_dir])
                 trainer.logger[1].experiment.log({f"train_batch{batch_idx}_all":[wandb.Image(img_dir, caption=f"train_batch{batch_idx}_all")]})
@@ -184,13 +184,13 @@ class LogSegPredictionCallback(Callback):
                     
                     plt.show()
                     
-                    img_dir = os.path.join(pl_module.cfg.vis_dir, f"epoch{pl_module.current_epoch}_train_batch{batch_idx}_image{img_id}.png")
+                    img_dir = os.path.join(pl_module.cfg.vis.vis_dir, f"epoch{pl_module.current_epoch}_train_batch{batch_idx}_image{img_id}.png")
                     fig2.savefig(img_dir, bbox_inches='tight') 
                     # wandb_logger.log_image(key=f"train_batch{batch_idx}_image{img_id}", images=[img_dir])
                     trainer.logger[1].experiment.log({f"train_batch{batch_idx}_image{img_id}":[wandb.Image(img_dir, caption=f"train_batch{batch_idx}_image{img_id}")]})
                     
                     # Save only first 4 images in the batch
-                    if img_id == pl_module.cfg.vis_img_num - 1:
+                    if img_id == pl_module.cfg.vis.vis_img_num - 1:
                         break
                     
                     
@@ -204,7 +204,7 @@ class LogSegPredOverlayCallback(Callback):
         """Called when the validation batch ends."""
         # outputs: The outputs of validation_step_end(validation_step(x))
         # Let's log all sample image predictions from the fifth batch
-        if batch_idx == pl_module.cfg.vis_val_batch_id:
+        if batch_idx == pl_module.cfg.vis.vis_val_batch_id:
             # self.eval()
             with torch.no_grad():   
                 x, y = batch["image"], batch["mask"]

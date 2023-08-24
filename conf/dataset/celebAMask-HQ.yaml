@@ -1,0 +1,10 @@
+data_name: CelebAMask-HQ
+data_dir: /kaggle/input/celebamask-hq-v2/CelebAMask-HQ-v2/
+output_class_num: 1
+mode: binary
+transform:
+  image_resize_h: 256 # 576
+  image_resize_w: 256 # 800
+train_dl_batchsize: 32
+val_dl_batchsize: 32
+test_dl_batchsize: 32
