@@ -72,11 +72,9 @@ class ImageSegModel(pl.LightningModule):
         elif cfg.loss == "dice&bce":
             self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
             self.loss_bce = BCEWithLogitsLoss()
-            self.loss = self.loss_dice + self.loss_bce
         elif cfg.loss == "dice&focal":
             self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
             self.loss_focal = smp.losses.FocalLoss(smp.losses.BINARY_MODE) # it uses focal_loss_with_logits
-            self.loss = self.loss_dice + self.loss_focal
         self.distance_transform_metric = DistanceLoss(BINARY_MODE, from_logits=False)
         
         self.save_hyperparameters(ignore=["model"])
@@ -117,7 +115,11 @@ class ImageSegModel(pl.LightningModule):
    
         if self.cfg.loss == "dist_transform":
             loss = self.loss(logits_y, y_distance, y_distance_sum)
-        else:
+        elif self.cfg.loss == "dice&bce":
+            loss = self.loss_dice(logits_y, y) + self.loss_bce(logits_y, y)
+        elif self.cfg.loss == "dice&focal":
+            loss = self.loss_dice(logits_y, y) + self.focal(logits_y, y)
+        else: # when using single loss function
             loss = self.loss(logits_y, y)
         self.log(f"{stage}_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
