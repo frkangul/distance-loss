@@ -76,9 +76,9 @@ def setup_wandb_and_logger(cfg):
     # WandbLogger automatically handles the start and end of the Weights & Biases run. 
     # It calls wandb.init() when the Trainer starts and wandb.finish() when the Trainer finishes
     wandb_logger = WandbLogger(
-        project=cfg.exp.wandb.proj_name,
-        name=f"{cfg.exp.model_name}/{cfg.exp.encoder_name}/{cfg.dataset.data_name}/{cfg.exp.loss}/{cfg.exp.wandb.exp_name}",
-        group= f"{cfg.exp.model_name}/{cfg.exp.encoder_name}/{cfg.dataset.data_name}",
+        project=cfg.exp.wandb_proj,
+        name=f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.data_name}/{cfg.exp.loss}/{cfg.exp.name}",
+        group= f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.data_name}",
         log_model="all", # model checkpoints are logged during training
     )
 
@@ -105,14 +105,14 @@ def setup_pl_callbacks(cfg):
         callbacks (list): A list of PyTorch Lightning callbacks.
     """ 
     model_checkpointer = ModelCheckpoint(
-        monitor=cfg.trainer.model_ckpt_motior,
+        monitor=cfg.checkpoint.motior,
         mode="max", # log model only if `val_per_image_iou` increases
         save_top_k=1, # to save the best model. save_top_k=-1 to save all models
         # every_n_epochs=5, # to save at every n epochs
         save_last=True,
         # To save locally:
-        dirpath=cfg.trainer.ckpt_save_dir,
-        filename='{epoch}-'+f'{cfg.exp.model_name}-{cfg.exp.encoder_name}-lr{cfg.trainer.lr}-hight{cfg.dataset.transform.image_resize_h}-width{cfg.dataset.transform.image_resize_w}-{cfg.dataset.data_name}'
+        dirpath=cfg.checkpoint.save_dir,
+        filename='{epoch}-'+f'{cfg.exp.model}-{cfg.exp.encoder}-lr{cfg.trainer.lr}-hight{cfg.dataset.transform.image_resize_h}-width{cfg.dataset.transform.image_resize_w}-{cfg.dataset.data_name}'
     )
 
     earlystop_checkpointer = EarlyStopping(
@@ -188,7 +188,7 @@ def pipeline(cfg: DictConfig):
     
     wandb_logger.watch(model, log="all") # log and monitor gradients, parameter histogram and model topology as we train  
 
-    trainer.fit(model) # ckpt_path=cfg.trainer.ckpt_path4resume, ckpt_path="best"
+    trainer.fit(model) # ckpt_path=cfg.checkpoint.resume_dir, ckpt_path="best"
     
     trainer.test(model, ckpt_path="best") # ckpt_path="last" to load and evaluate the last model
 

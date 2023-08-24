@@ -48,8 +48,8 @@ class ImageSegModel(pl.LightningModule):
         # Define PyTorch model, model weights are in cuda
         encoder_weights = "imagenet"
         input_channels = 3
-        self.model = smp.create_model(arch=cfg.exp.model_name,
-                                      encoder_name=cfg.exp.encoder_name,
+        self.model = smp.create_model(arch=cfg.exp.model,
+                                      encoder_name=cfg.exp.encoder,
                                       encoder_weights=encoder_weights,
                                       in_channels=input_channels,
                                       classes=cfg.dataset.output_class_num)

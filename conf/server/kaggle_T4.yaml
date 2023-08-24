@@ -1,4 +1,4 @@
-# 2 T4 GPU
+# 2 T4 GPU 15 GB VRAM
 accelerator: auto # gpu, tpu, cpu, auto
 device_num: 2 # Number of gpu, check if T4 vs P100
 precision: 16 # Double precision (64), full precision (32), half precision (16) or bfloat16 precision (bf16)
