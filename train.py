@@ -1,3 +1,16 @@
+"""
+This is the main script for training the image segmentation model. It includes the following steps:
+1. Import necessary libraries
+2. Set up Weights & Biases for experiment tracking
+3. Define a function to set the seed for reproducibility
+4. Define a function to set up the Weights & Biases logger
+5. Define a function to set up PyTorch Lightning callbacks
+6. Define the main pipeline function that sets up the configuration, seeds, logger, model, callbacks, and trainer.
+7. Start the training process and finally test the model.
+
+Auther: Furkan Gul
+Date: 24.08.2023
+"""
 import torch
 from torch.nn import BCEWithLogitsLoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -42,7 +55,6 @@ def seed_everything(seed: int):
     Args:
         seed (int): The seed value to be set for generating random numbers.
     """
-
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -59,7 +71,6 @@ def setup_wandb_and_logger(cfg):
     Returns:
         wandb_logger (WandbLogger): The Weights & Biases logger.
     """
-
     wandb.login(key=WANDB_KEY)
 
     # WandbLogger automatically handles the start and end of the Weights & Biases run. 
@@ -82,7 +93,6 @@ def setup_wandb_and_logger(cfg):
     wandb.define_metric('val_distance_transform_evalmetric', summary='max')
     wandb.define_metric('train_loss', summary='min')
     wandb.define_metric('val_loss', summary='min')
-
     return wandb_logger
     
 
@@ -93,8 +103,7 @@ def setup_pl_callbacks(cfg):
 
     Returns:
         callbacks (list): A list of PyTorch Lightning callbacks.
-    """
-    
+    """ 
     model_checkpointer = ModelCheckpoint(
         monitor=cfg.trainer.model_ckpt_motior,
         mode="max", # log model only if `val_per_image_iou` increases
