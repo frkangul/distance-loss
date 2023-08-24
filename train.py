@@ -36,10 +36,10 @@ WANDB_KEY="615a4a8c6b3ade78e75eba4a9c1ed70e4f564178"
 
 cfg = {
     "max_epoch": 60,
-    "max_time": "02:23:55:00", 
-    "distance_transform_loss": False,
+    "max_time": "02:23:55:00",
+    "loss": "bce", # dist_transform, bce, iou, dice, dice&bce, dice&focal
     "wandb": {
-        "exp_name": "bce",
+        "exp_name": "T4_deneme",
         "proj_name": "foreground-car-segm",
     },
     "model_ckpt_motior": "val_per_image_bIoU",
@@ -114,7 +114,7 @@ def setup_wandb_and_logger():
     # It calls wandb.init() when the Trainer starts and wandb.finish() when the Trainer finishes
     wandb_logger = WandbLogger(
         project=cfg.wandb.proj_name,
-        name=f"{cfg.model.model_name}/{cfg.model.encoder_name}/{cfg.wandb.exp_name}",
+        name=f"{cfg.model.model_name}/{cfg.model.encoder_name}/{cfg.data_name}/{cfg.loss}/{cfg.wandb.exp_name}",
         group= f"{cfg.model.model_name}/{cfg.model.encoder_name}/{cfg.data_name}",
         log_model="all", # model checkpoints are logged during training
     )

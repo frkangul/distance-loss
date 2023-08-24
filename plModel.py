@@ -59,16 +59,24 @@ class ImageSegModel(pl.LightningModule):
         self.val_transform = val_transform
         self.test_transform = test_transform
         self.unnorm_transform = unnorm_transform
-        
+
         # Define loss. If predicted mask contains logits, and loss param `from_logits` is set to True
-        if cfg.distance_transform_loss:
-            self.loss_distance = DistanceLoss(BINARY_MODE, from_logits=True)
-        else:
-            # self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+        if cfg.loss == "dist_transform":
+            self.loss = DistanceLoss(BINARY_MODE, from_logits=True)
+        elif cfg.loss == "bce":
+            self.loss = BCEWithLogitsLoss()
+        elif cfg.loss == "iou":
+            self.loss = smp.losses.JaccardLoss(smp.losses.BINARY_MODE, from_logits=True)
+        elif cfg.loss == "dice":
+            self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+        elif cfg.loss == "dice&bce":
+            self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
             self.loss_bce = BCEWithLogitsLoss()
-            # self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
-            # self.loss_focal = smp.losses.FocalLoss(smp.losses.BINARY_MODE) # it uses focal_loss_with_logits
-            # self.loss_iou = smp.losses.JaccardLoss(smp.losses.BINARY_MODE, from_logits=True)
+            self.loss = self.loss_dice + self.loss_bce
+        elif cfg.loss == "dice&focal":
+            self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+            self.loss_focal = smp.losses.FocalLoss(smp.losses.BINARY_MODE) # it uses focal_loss_with_logits
+            self.loss = self.loss_dice + self.loss_focal
         self.distance_transform_metric = DistanceLoss(BINARY_MODE, from_logits=False)
         
         self.save_hyperparameters(ignore=["model"])
@@ -106,24 +114,11 @@ class ImageSegModel(pl.LightningModule):
         
         boundary_y = mask_to_boundary_tensor(y, dilation_ratio=0.02)
         boundary_pred_y = mask_to_boundary_tensor(prob_y, dilation_ratio=0.02)
-        
-        if self.cfg.distance_transform_loss:
-            loss = self.loss_distance(logits_y, y_distance, y_distance_sum)
+   
+        if self.cfg.loss == "dist_transform":
+            loss = self.loss(logits_y, y_distance, y_distance_sum)
         else:
-            # loss_dice = self.loss_dice(logits_y, y)
-            loss_bce = self.loss_bce(logits_y, y)
-            # loss_iou = self.loss_iou(logits_y, y)
-            loss = loss_bce # loss_iou # loss_dice
-            # loss = loss_dice + loss_bce
-            # loss_dice = self.loss_dice(logits_y, y)
-            # loss_focal = self.loss_focal(logits_y, y)
-            # loss = loss_dice + loss_focal
-            # if self.current_epoch > -1:
-            #     loss_iou = self.loss_iou(prob_y, y)
-            #     loss_biou = self.loss_iou(boundary_pred_y, boundary_y)
-            #     loss = torch.maximum(loss_iou, loss_biou)
-            # else:
-            #     loss = self.loss_iou(prob_y, y)
+            loss = self.loss(logits_y, y)
         self.log(f"{stage}_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
         # We will compute IoU metric by two ways
