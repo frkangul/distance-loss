@@ -1,5 +1,6 @@
 *.pem
 data/
+!src/data/
 resulting_imgs/
 logs/
 wandb/
