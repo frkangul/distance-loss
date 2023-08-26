@@ -18,9 +18,9 @@ from pytorch_lightning.callbacks.progress import TQDMProgressBar
 from pytorch_lightning.loggers import WandbLogger
 from src.plCallbacks import LogSegPredictionCallback
 
-WANDB_KEY="615a4a8c6b3ade78e75eba4a9c1ed70e4f564178"
+WANDB_KEY= os.environ("WANDB")
 
-def seed_everything(seed: int):  
+def seed_everything(seed: int):
     """
     Sets the seed for generating random numbers. This is used for reproducibility in experiments.
 
