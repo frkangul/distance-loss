@@ -1,25 +1,13 @@
 import torch
-from torch.nn import BCEWithLogitsLoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import Dataset, DataLoader
-from torchvision.datasets import CocoDetection, VisionDataset
 from torchvision.utils import draw_segmentation_masks
 import torchvision.transforms.functional as visF
-# from torchmetrics import Dice # https://github.com/Lightning-AI/metrics/tree/master/src/torchmetrics
 
 import os
-from typing import Callable, Optional, Tuple
 import numpy as np
 import matplotlib.pyplot as plt 
-from pathlib import Path
-from pprint import pprint
-from pycocotools.coco import COCO
-from pytorch_lightning.callbacks.progress import TQDMProgressBar
-from pytorch_lightning.loggers import CSVLogger, WandbLogger
-from pytorch_lightning.utilities.model_summary import ModelSummary
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, Callback
+from pytorch_lightning.callbacks import Callback
 
-from albumentations.pytorch import ToTensorV2
 import wandb
 import warnings
 warnings.filterwarnings("ignore") # category=DeprecationWarning

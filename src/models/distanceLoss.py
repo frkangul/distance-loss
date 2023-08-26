@@ -1,3 +1,17 @@
+"""
+This module contains the implementation of DistanceLoss, a loss function for image segmentation tasks. 
+It supports binary, multiclass and multilabel cases. The module also includes utility functions 
+for converting masks to boundary tensors and calculating soft distance scores.
+
+Classes:
+    DistanceLoss: A class that calculates the distance loss for image segmentation tasks.
+
+Functions:
+    to_tensor(x, dtype=None): Converts the input to a torch.Tensor.
+    soft_distance_score(output, target, target_sum, smooth=0.0, eps=1e-7, dims=None): Calculates the soft distance score.
+    mask_to_boundary_tensor(mask, dilation_ratio=0.02): Converts a binary mask to a boundary mask.
+"""
+
 from typing import Optional, List
 
 import torch
@@ -26,8 +40,6 @@ MULTICLASS_MODE: str = "multiclass"
 #: pixels in each channel which are not belong to class labeled as **0**.
 #: Target mask shape - (N, C, H, W), model output mask shape (N, C, H, W).
 MULTILABEL_MODE: str = "multilabel"
-
-
 
 # https://github.com/qubvel/segmentation_models.pytorch/blob/master/segmentation_models_pytorch/losses/_functional.py
 def to_tensor(x, dtype=None) -> torch.Tensor:
@@ -65,7 +77,6 @@ def soft_distance_score(
         
     distance_score = intersection / (cardinality + smooth).clamp_min(eps)
     return distance_score
-
 
 __all__ = ["DistanceLoss"]
 
@@ -169,7 +180,6 @@ class DistanceLoss(_Loss):
             loss = loss[self.classes]
 
         return loss.mean()
-
 
 # BOUNDARY IOU TENSOR IMPLEMENTATION
 # General util function to get the boundary of a binary mask.

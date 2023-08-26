@@ -1,27 +1,19 @@
+"""
+This module contains the ImageSegModel class which is a PyTorch Lightning module for image segmentation. 
+
+The ImageSegModel class includes methods for setting up the model, defining the forward pass, and defining the training, validation, and test steps. It also includes methods for configuring the optimizer and setting up the data loaders.
+"""
+
 import torch
 from torch.nn import BCEWithLogitsLoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import Dataset, DataLoader
-from torchvision.datasets import CocoDetection, VisionDataset
-from torchvision.utils import draw_segmentation_masks
-# from torchmetrics import Dice # https://github.com/Lightning-AI/metrics/tree/master/src/torchmetrics
-
-from typing import Callable, Optional, Tuple
-from pathlib import Path
-from pprint import pprint
-from pycocotools.coco import COCO
+from torch.utils.data import DataLoader
 
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks.progress import TQDMProgressBar
-from pytorch_lightning.loggers import CSVLogger, WandbLogger
-from pytorch_lightning.utilities.model_summary import ModelSummary
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, Callback
-
 import segmentation_models_pytorch as smp
-from albumentations.pytorch import ToTensorV2
 import os
-from distanceLoss import DistanceLoss, mask_to_boundary_tensor
-from customDatasets import DatasetFromSubset, CocoToSmpDataset, random_split
+from src.models.distanceLoss import DistanceLoss, mask_to_boundary_tensor
+from src.data.customDatasets import DatasetFromSubset, CocoToSmpDataset, random_split
 
 BINARY_MODE: str = "binary"
 MULTICLASS_MODE: str = "multiclass"
