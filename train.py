@@ -1,12 +1,8 @@
 """
 This is the main script for training the image segmentation model. It includes the following steps:
 1. Import necessary libraries
-2. Set up Weights & Biases for experiment tracking
-3. Define a function to set the seed for reproducibility
-4. Define a function to set up the Weights & Biases logger
-5. Define a function to set up PyTorch Lightning callbacks
-6. Define the main pipeline function that sets up the configuration, seeds, logger, model, callbacks, and trainer.
-7. Start the training process and finally test the model.
+2. Define the main pipeline function that sets up the configuration, seeds, logger, model, callbacks, and trainer.
+3. Start the training process and finally test the model.
 
 Auther: Furkan Gul
 Date: 24.08.2023
