@@ -12,6 +12,7 @@ Auther: Furkan Gul
 Date: 24.08.2023
 """
 # from torchmetrics import Dice # https://github.com/Lightning-AI/metrics/tree/master/src/torchmetrics
+from src.models.plModel import ImageSegModel
 from pprint import pprint
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
@@ -21,7 +22,8 @@ import warnings
 from omegaconf import DictConfig, OmegaConf
 import hydra
 
-from src.models.plModel import ImageSegModel
+
+
 from src.data.transforms import get_transforms
 from src.utils import seed_everything, setup_wandb_and_logger, setup_pl_callbacks
 warnings.filterwarnings("ignore") # category=DeprecationWarning
