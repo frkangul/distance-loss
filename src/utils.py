@@ -70,8 +70,8 @@ def setup_wandb_and_logger(cfg):
     # It calls wandb.init() when the Trainer starts and wandb.finish() when the Trainer finishes
     wandb_logger = WandbLogger(
         project=cfg.exp.wandb_proj,
-        name=f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.data_name}/{cfg.exp.loss}/{cfg.exp.name}",
-        group= f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.data_name}",
+        name=f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.name}/{cfg.exp.loss}/{cfg.exp.name}",
+        group= f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.name}",
         log_model="all", # model checkpoints are logged during training
     )
 
@@ -104,7 +104,7 @@ def setup_pl_callbacks(cfg):
         save_last=True,
         # To save locally:
         dirpath=cfg.checkpoint.save_dir,
-        filename='{epoch}-'+f'{cfg.exp.model}-{cfg.exp.encoder}-lr{cfg.trainer.lr}-hight{cfg.dataset.transform.image_resize_h}-width{cfg.dataset.transform.image_resize_w}-{cfg.dataset.data_name}'
+        filename='{epoch}-'+f'{cfg.exp.model}-{cfg.exp.encoder}-lr{cfg.trainer.lr}-hight{cfg.dataset.transform.image_resize_h}-width{cfg.dataset.transform.image_resize_w}-{cfg.dataset.name}'
     )
 
     earlystop_checkpointer = EarlyStopping(

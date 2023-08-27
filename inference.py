@@ -4,8 +4,8 @@ model4eval = model # ImageSegModel.load_from_checkpoint("/kaggle/input/unet-sil/
 # disable randomness, dropout, etc...
 model4eval.eval()
 
-test_ds = CocoToSmpDataset(root=os.path.join(cfg.dataset.data_dir, "test"), 
-                                annFile=os.path.join(cfg.dataset.data_dir, "annotations_test.json"),
+test_ds = CocoToSmpDataset(root=os.path.join(cfg.dataset.dir, "test"), 
+                                annFile=os.path.join(cfg.dataset.dir, "annotations_test.json"),
                                 transforms=test_transform
                           )
 
