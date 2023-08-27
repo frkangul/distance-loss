@@ -200,17 +200,30 @@ def mask_to_boundary_tensor(mask, dilation_ratio=0.02):
         
     boundary_mask = torch.zeros_like(mask)
     kernel = np.ones((3, 3), dtype=np.uint8)
-    for idx, img_tensor in enumerate(mask[:,]): # tensor_img will be in the shape of (C, H, W)
-        # From tensor to numpy
-        # .cpu().detach().squeeze().numpy()
-        img_np = np.array(img_tensor.cpu().detach(), dtype="uint8").transpose(1, 2, 0).squeeze() # in the shape of (H, W, C) -> (H, W) since C=1
-        # Pad image so mask truncated by the image border is also considered as boundary.
-        new_mask = cv2.copyMakeBorder(img_np, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
-        new_mask_erode = cv2.erode(new_mask, kernel, iterations=dilation)
-        mask_erode = new_mask_erode[1 : h + 1, 1 : w + 1] # in the shape of (H, W)
-        boundary_mask_np = img_np - mask_erode
-        boundary_mask_np = np.expand_dims(boundary_mask_np, 0)
-        # import pdb; pdb.set_trace()
-        # From numpy to tensor
-        boundary_mask[idx,] = torch.tensor(boundary_mask_np)
+    for idx, img_tensor in enumerate(mask[:,]): # img_tensor will be in the shape of (C, H, W)
+        if c > 1: # multiclass case
+            for c_idx, img_tensor_ in enumerate(img_tensor[:,]): # img_tensor_ will be in the shape of (H, W)
+                # From tensor to numpy
+                img_np = np.array(img_tensor_.cpu().detach(), dtype="uint8")
+                # Pad image so mask truncated by the image border is also considered as boundary.
+                new_mask = cv2.copyMakeBorder(img_np, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+                new_mask_erode = cv2.erode(new_mask, kernel, iterations=dilation)
+                mask_erode = new_mask_erode[1 : h + 1, 1 : w + 1] # in the shape of (H, W)
+                boundary_mask_np = img_np - mask_erode
+                boundary_mask_np = np.expand_dims(boundary_mask_np, 0)
+                # import pdb; pdb.set_trace()
+                # From numpy to tensor
+                boundary_mask[idx, c_idx] = torch.tensor(boundary_mask_np)
+        elif c == 1: # binary case
+            # From tensor to numpy
+            img_np = np.array(img_tensor.cpu().detach(), dtype="uint8").transpose(1, 2, 0).squeeze() # in the shape of (H, W, C) -> (H, W) since C=1
+            # Pad image so mask truncated by the image border is also considered as boundary.
+            new_mask = cv2.copyMakeBorder(img_np, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+            new_mask_erode = cv2.erode(new_mask, kernel, iterations=dilation)
+            mask_erode = new_mask_erode[1 : h + 1, 1 : w + 1] # in the shape of (H, W)
+            boundary_mask_np = img_np - mask_erode
+            boundary_mask_np = np.expand_dims(boundary_mask_np, 0)
+            # import pdb; pdb.set_trace()
+            # From numpy to tensor
+            boundary_mask[idx,] = torch.tensor(boundary_mask_np)
     return boundary_mask
