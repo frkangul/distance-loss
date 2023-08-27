@@ -110,7 +110,7 @@ class ImageSegModel(pl.LightningModule):
         elif self.cfg.exp.loss == "dice&bce":
             loss = self.loss_dice(logits_y, y) + self.loss_bce(logits_y, y)
         elif self.cfg.exp.loss == "dice&focal":
-            loss = self.loss_dice(logits_y, y) + self.focal(logits_y, y)
+            loss = self.loss_dice(logits_y, y) + self.loss_focal(logits_y, y)
         else: # when using single loss function
             loss = self.loss(logits_y, y)
         self.log(f"{stage}_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
