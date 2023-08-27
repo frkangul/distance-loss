@@ -13,7 +13,7 @@ import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 import os
 from src.models.distanceLoss import DistanceLoss, mask_to_boundary_tensor
-from src.data.customDatasets import DatasetFromSubset, CocoToSmpDataset, random_split
+from src.data.customDatasets import DatasetFromSubset, CocoToSmpDataset, CityscapesToSmpDataset, random_split
 
 BINARY_MODE: str = "binary"
 MULTICLASS_MODE: str = "multiclass"
@@ -254,21 +254,33 @@ class ImageSegModel(pl.LightningModule):
 
     def setup(self, stage=None):
         # Assign train/val datasets for use in dataloaders
-        if stage == "fit" or stage is None:
-            full_ds = CocoToSmpDataset(root=os.path.join(self.cfg.dataset.data_dir, "train"), 
-                                       annFile=os.path.join(self.cfg.dataset.data_dir, "annotations_train.json")
-                                       )
-            # Train-val split before appliying transformations
-            train_subset, val_subset = random_split(full_ds, [0.8, 0.2],
-                                                      generator=torch.Generator().manual_seed(self.cfg.exp.SEED))
-            # Apply transformations to each subset
-            self.train_ds = DatasetFromSubset(train_subset, transforms=self.train_transform)
-            self.val_ds = DatasetFromSubset(val_subset, transforms=self.val_transform)
-        # Assign test dataset for use in dataloader(s)
-        if stage == "test" or stage is None:
-            self.test_ds = CocoToSmpDataset(root=os.path.join(self.cfg.dataset.data_dir, "test"), 
-                                            annFile=os.path.join(self.cfg.dataset.data_dir, "annotations_test.json"),
-                                            transforms=self.test_transform)
+        if self.cfg.dataset.name == "CelebAMask-HQ":
+            if stage == "fit" or stage is None:
+                full_ds = CocoToSmpDataset(root=os.path.join(self.cfg.dataset.dir, "train"), 
+                                        annFile=os.path.join(self.cfg.dataset.dir, "annotations_train.json")
+                                        )
+                # Train-val split before appliying transformations
+                train_subset, val_subset = random_split(full_ds, [0.8, 0.2],
+                                                        generator=torch.Generator().manual_seed(self.cfg.exp.SEED))
+                # Apply transformations to each subset
+                self.train_ds = DatasetFromSubset(train_subset, transforms=self.train_transform)
+                self.val_ds = DatasetFromSubset(val_subset, transforms=self.val_transform)
+            # Assign test dataset for use in dataloader(s)
+            if stage == "test" or stage is None:
+                self.test_ds = CocoToSmpDataset(root=os.path.join(self.cfg.dataset.dir, "test"), 
+                                                annFile=os.path.join(self.cfg.dataset.dir, "annotations_test.json"),
+                                                transforms=self.test_transform)
+        elif self.cfg.dataset.name == "Cityscapes":
+            if stage == "fit" or stage is None:
+                self.train_ds = CityscapesToSmpDataset(self.cfg.dataset.dir, 
+                                                       split='train', mode='fine', transforms=self.train_transform)
+                
+                self.val_ds = CityscapesToSmpDataset(self.cfg.dataset.dir, 
+                                                     split='val', mode='fine', transforms=self.val_transform)
+            # Assign test dataset for use in dataloader(s)
+            if stage == "test" or stage is None:
+                self.test_ds = CityscapesToSmpDataset(self.dataset.dir, 
+                                                      split='test', mode='fine', transforms=self.test_transform)
             
     def train_dataloader(self):
         return DataLoader(self.train_ds, batch_size=self.cfg.dataset.train_dl_batchsize, shuffle=True, num_workers=self.n_cpu, pin_memory=True)

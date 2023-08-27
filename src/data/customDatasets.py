@@ -27,7 +27,7 @@ from typing import (
 )
 import warnings
 warnings.filterwarnings("ignore") # category=DeprecationWarning
-from torchvision.datasets import VisionDataset
+from torchvision.datasets import VisionDataset, Cityscapes
 from typing import Any, Callable, List, Optional, Tuple
 from scipy import ndimage
 import numpy as np
@@ -201,7 +201,206 @@ class CocoToSmpDataset(VisionDataset):
     
     def __len__(self) -> int:
         return len(self.ids)
+
+
+# https://pytorch.org/vision/main/_modules/torchvision/datasets/cityscapes.html#Cityscapes
+class CityscapesToSmpDataset(Cityscapes):
+    """`Cityscapes <http://www.cityscapes-dataset.com/>`_ Dataset.
+
+    Args:
+        root (string): Root directory of dataset where directory ``leftImg8bit``
+            and ``gtFine`` or ``gtCoarse`` are located.
+        split (string, optional): The image split to use, ``train``, ``test`` or ``val`` if mode="fine"
+            otherwise ``train``, ``train_extra`` or ``val``
+        mode (string, optional): The quality mode to use, ``fine`` or ``coarse``
+        target_type (string or list, optional): Type of target to use, ``instance``, ``semantic``, ``polygon``
+            or ``color``. Can also be a list to output a tuple with all specified target types.
+        transform (callable, optional): A function/transform that takes in a PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+        target_transform (callable, optional): A function/transform that takes in the
+            target and transforms it.
+        transforms (callable, optional): A function/transform that takes input sample and its target as entry
+            and returns a transformed version.
+
+    Examples:
+
+        Get semantic segmentation target
+
+        .. code-block:: python
+
+            dataset = Cityscapes('./data/cityscapes', split='train', mode='fine',
+                                 target_type='semantic')
+
+            img, smnt = dataset[0]
+
+        Get multiple targets
+
+        .. code-block:: python
+
+            dataset = Cityscapes('./data/cityscapes', split='train', mode='fine',
+                                 target_type=['instance', 'color', 'polygon'])
+
+            img, (inst, col, poly) = dataset[0]
+
+        Validate on the "coarse" set
+
+        .. code-block:: python
+
+            dataset = Cityscapes('./data/cityscapes', split='val', mode='coarse',
+                                 target_type='semantic')
+
+            img, smnt = dataset[0]
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, target_type="semantic")
+        self.colormap = self._generate_19colormap()
     
+    @staticmethod
+    def _transform_binarymask_to_distance_mask(gt_mask):
+        """
+        Arguments:
+            gt_mask (ndarray): ground-truth binary mask in HW format
+        Returns:
+            distance_weight (ndarray): normalized between 0 and 1 and outer of object is 1
+            distance_weight_sum (float): sum af all normalized pixel values within inside of object in binary mask
+        """
+        # PART 1: Object distance transform
+        dist = ndimage.distance_transform_cdt(gt_mask) # distance_transform_bf is less efficient
+        reverse_dist = dist.max() - dist
+        reverse_dist = (reverse_dist * gt_mask) # make outer background zero
+        
+        # CONSIDER EDGE CASES LIKE EMPTY AND FULL MASK
+        if reverse_dist.max() == 0:
+            if gt_mask.max() == 0: # Grount-truth mask is empty (hiç bir pixelde etiket yok)
+                # every element in dist is 0
+                # IoU/Distance loss is defined for non-empty classes
+                distance_weight = gt_mask # full of 0s. It doesn't matter since it will be zerout out in loss func
+                distance_weight_sum = np.sum(0)
+                return distance_weight, distance_weight_sum
+            elif gt_mask.min() == 1 : # Grount-truth mask is full (fotoğrafın her pixeli etiket)
+                # every element in dist is -1
+                distance_weight = gt_mask # full of 1s
+                distance_weight_sum = np.sum(distance_weight)
+                return distance_weight, distance_weight_sum
+            else:
+                # If 1s in mask is really less. Ie: small objects. Eg: gt_mask.sum() = 13
+                distance_weight = gt_mask # very less 1s, too many 0s
+                distance_weight_sum = np.sum(distance_weight)
+                return distance_weight, distance_weight_sum
+        
+        inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
+        # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
+
+        # PART 2: Outer distance transform
+        reverse_gt_mask = 1- gt_mask
+
+        # PART 3: Union of inner and outer transforms
+        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
+        # plt.imshow(distance_weight_vis)
+        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
+        distance_weight_sum = np.sum(inner_reverse_dist_n)
+
+        return distance_weight, distance_weight_sum
+    
+    # https://github.com/albumentations-team/autoalbument/blob/master/examples/cityscapes/dataset.py
+    def _generate_19colormap(self):
+        # It gives 19 classes
+        colormap = {}
+        for class_ in self.classes:
+            if class_.train_id in (-1, 255):
+                continue
+            colormap[class_.train_id] = class_.id
+        return colormap
+    
+    
+    def _convert_to_19segmentation_mask(self, mask):
+        # It gives 19 classes
+        height, width = mask.shape[:2]
+        segmentation_mask = np.zeros((height, width, len(self.colormap)), dtype=np.float32)
+        for label_index, label in self.colormap.items():
+            segmentation_mask[:, :, label_index] = (mask == label).astype(float)
+        return segmentation_mask
+
+    def _generate_8colormap(self):
+        # It gives 8 classes
+        colormap = {}
+        idx = 0
+        for class_ in self.classes:
+            if class_.category_id in (6, 7):
+                if class_.name not in ("caravan", "trailer", "license plate"):
+                    colormap[idx] = class_.id
+                    idx+=1
+        return colormap
+    
+    def _convert_to_8segmentation_mask(self, mask):
+        # It gives 8 classes as in Mask-RCNN in this order:
+        # person, rider, car, truck, bus, train, mcycle, bicycle
+        height, width = mask.shape[:2]
+        segmentation_mask = np.zeros((height, width, 8), dtype=np.float32)
+        for label_index, label in self.colormap.items():
+            segmentation_mask[:, :, label_index] = (mask == label).astype(float)
+        return segmentation_mask
+    
+    def _generate_3colormap(self):
+        # It gives 3 classes: person, bicycle, rider
+        colormap = {}
+        idx = 0
+        for class_ in self.classes:
+            if class_.category_id in (6, 7):
+                if class_.name in ("person", "rider", "bicycle"):
+                    colormap[idx] = class_.id
+                    idx+=1
+        return colormap
+    
+    def _convert_to_3segmentation_mask(self, mask):
+        # It gives 3 classes as in Mask-RCNN in this order:
+        # person, rider, car, truck, bus, train, mcycle, bicycle
+        height, width = mask.shape[:2]
+        segmentation_mask = np.zeros((height, width, 3), dtype=np.float32)
+        for label_index, label in self.colormap.items():
+            segmentation_mask[:, :, label_index] = (mask == label).astype(float)
+        return segmentation_mask
+    
+    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        """
+        Args:
+            index (int): Index
+        Returns:
+            tuple: (image, target) where target is a tuple of all target types if target_type is a list with more
+            than one item. Otherwise, target is a json object if target_type="polygon", else the image segmentation.
+        """
+
+        image = np.array(Image.open(self.images[index]).convert("RGB"))
+        
+        # Just export semantic segmentation
+        targets: Any = []
+        for i, t in enumerate(self.target_type):
+            if t == "semantic":
+                target = np.array(Image.open(self.targets[index][i])).astype(np.float32)
+            else:
+                print("target_type can only be 'semantic'")
+                break
+        mask = self._convert_to_19segmentation_mask(target)
+        
+        sample = dict(image=image, mask=mask)
+        if self.transforms is not None:
+            sample = self.transforms(**sample)
+            # check for multiclass case
+            class_num = sample["mask"].shape[2] # HWC shape
+            if class_num > 1: # multiclass
+                sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
+                sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()   
+                for idx in range(class_num):
+                    sample["distance_mask"][:, :, idx], sample["distance_mask_sum"][idx] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"][:, :, idx])) # change binary mask to distance transformed mask 
+                sample["distance_mask"] = sample["distance_mask"].transpose(2, 0, 1) # convert HWC to CHW format
+                # import pdb; pdb.set_trace()
+                sample["mask"] = np.array(sample["mask"]).transpose(2, 0, 1) # convert HWC to CHW format
+            else: # binary class
+                sample["distance_mask"], sample["distance_mask_sum"] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"])) # change binary mask to distance transformed mask
+                sample["distance_mask"] = np.expand_dims(sample["distance_mask"], 0) # convert to CHW format ie. HW -> 1HW:
+                sample["mask"] = np.expand_dims(sample["mask"], 0) # convert to CHW format ie. HW -> 1HW:    
+        return sample
+
     
 class DatasetFromSubset(Dataset):
     def __init__(self, subset, transforms=None):
