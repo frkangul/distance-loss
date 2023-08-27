@@ -54,7 +54,7 @@ class ImageSegModel(pl.LightningModule):
 
         # Define loss. If predicted mask contains logits, and loss param `from_logits` is set to True
         if cfg.exp.loss == "dist_transform":
-            self.loss = DistanceLoss(cfg.dataset.mode, from_logits=True)
+            self.loss = DistanceLoss(MULTILABEL_MODE, from_logits=True)
         elif cfg.exp.loss == "bce":
             self.loss = BCEWithLogitsLoss()
         elif cfg.exp.loss == "iou":
@@ -67,7 +67,7 @@ class ImageSegModel(pl.LightningModule):
         elif cfg.exp.loss == "dice&focal":
             self.loss_dice = smp.losses.DiceLoss(cfg.dataset.mode, from_logits=True)
             self.loss_focal = smp.losses.FocalLoss(cfg.dataset.mode) # it uses focal_loss_with_logits
-        self.distance_transform_metric = DistanceLoss(cfg.dataset.mode, from_logits=False)
+        self.distance_transform_metric = DistanceLoss(MULTILABEL_MODE, from_logits=False)
         
         self.save_hyperparameters(ignore=["model"])
     
