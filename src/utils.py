@@ -70,8 +70,8 @@ def setup_wandb_and_logger(cfg):
     # It calls wandb.init() when the Trainer starts and wandb.finish() when the Trainer finishes
     wandb_logger = WandbLogger(
         project=cfg.exp.wandb_proj,
-        name=f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.name}/{cfg.exp.loss}/{cfg.exp.name}",
-        group= f"{cfg.exp.model}/{cfg.exp.encoder}/{cfg.dataset.name}",
+        name=f"{cfg.dataset.name}/{cfg.exp.model}/{cfg.exp.encoder}/{cfg.exp.loss}/{cfg.exp.name}",
+        group= f"{cfg.dataset.name}/{cfg.exp.model}/{cfg.exp.encoder}",
         log_model="all", # model checkpoints are logged during training
     )
 
@@ -121,7 +121,7 @@ def setup_pl_callbacks(cfg):
         # ReduceLROnPlateauOptCallback()
     ]
     if cfg.dataset.mode == "binary": callbacks.append(LogSegPredictionCallback())
-    
+
     return callbacks
 
 if __name__ == "__main__":
