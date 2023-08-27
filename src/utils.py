@@ -117,7 +117,7 @@ def setup_pl_callbacks(cfg):
         TQDMProgressBar(refresh_rate=20), # for notebook usage
         # earlystop_checkpointer,
         model_checkpointer,
-        LogSegPredictionCallback() if cfg.dataset.mode == "binary" else None,
+        LogSegPredictionCallback() if cfg.dataset.mode == "binary" else,
         lr_monitor,
         # ReduceLROnPlateauOptCallback()
     ]
