@@ -54,20 +54,20 @@ class ImageSegModel(pl.LightningModule):
 
         # Define loss. If predicted mask contains logits, and loss param `from_logits` is set to True
         if cfg.exp.loss == "dist_transform":
-            self.loss = DistanceLoss(BINARY_MODE, from_logits=True)
+            self.loss = DistanceLoss(cfg.dataset.mode, from_logits=True)
         elif cfg.exp.loss == "bce":
             self.loss = BCEWithLogitsLoss()
         elif cfg.exp.loss == "iou":
-            self.loss = smp.losses.JaccardLoss(smp.losses.BINARY_MODE, from_logits=True)
+            self.loss = smp.losses.JaccardLoss(cfg.dataset.mode, from_logits=True)
         elif cfg.exp.loss == "dice":
-            self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+            self.loss = smp.losses.DiceLoss(cfg.dataset.mode, from_logits=True)
         elif cfg.exp.loss == "dice&bce":
-            self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+            self.loss_dice = smp.losses.DiceLoss(cfg.dataset.mode, from_logits=True)
             self.loss_bce = BCEWithLogitsLoss()
         elif cfg.exp.loss == "dice&focal":
-            self.loss_dice = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
-            self.loss_focal = smp.losses.FocalLoss(smp.losses.BINARY_MODE) # it uses focal_loss_with_logits
-        self.distance_transform_metric = DistanceLoss(BINARY_MODE, from_logits=False)
+            self.loss_dice = smp.losses.DiceLoss(cfg.dataset.mode, from_logits=True)
+            self.loss_focal = smp.losses.FocalLoss(cfg.dataset.mode) # it uses focal_loss_with_logits
+        self.distance_transform_metric = DistanceLoss(cfg.dataset.mode, from_logits=False)
         
         self.save_hyperparameters(ignore=["model"])
     
@@ -124,7 +124,7 @@ class ImageSegModel(pl.LightningModule):
         
         # Extract tp, fp, fn, tn for boundary iou 
         boundary_pred_y_th = mask_to_boundary_tensor(pred_y_th, dilation_ratio=0.02)
-        b_tp, b_fp, b_fn, b_tn = smp.metrics.get_stats(boundary_pred_y_th.long(), boundary_y.long(), mode="binary")
+        b_tp, b_fp, b_fn, b_tn = smp.metrics.get_stats(boundary_pred_y_th.long(), boundary_y.long(), mode=self.cfg.dataset.mode, num_classes=self.cfg.dataset.output_class_num)
         
         # Calculate distance transform evaluation metric here. Do not concaterate in the epoch_end and then evaluate since it will require more computation.
         distance_transform_metric = 1- self.distance_transform_metric(pred_y_th, y_distance, y_distance_sum)
