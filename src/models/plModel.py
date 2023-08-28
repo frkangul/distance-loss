@@ -279,7 +279,7 @@ class ImageSegModel(pl.LightningModule):
                                                      split='val', mode='fine', transforms=self.val_transform)
             # Assign test dataset for use in dataloader(s)
             if stage == "test" or stage is None:
-                self.test_ds = CityscapesToSmpDataset(self.dataset.dir, 
+                self.test_ds = CityscapesToSmpDataset(self.cfg.dataset.dir, 
                                                       split='test', mode='fine', transforms=self.test_transform)
             
     def train_dataloader(self):
