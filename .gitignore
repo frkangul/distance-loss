@@ -1,6 +1,8 @@
 *.pem
 data/
 !src/data/
+models/
+!src/models/
 resulting_imgs/
 logs/
 wandb/
