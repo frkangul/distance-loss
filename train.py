@@ -29,7 +29,7 @@ def pipeline(cfg: DictConfig):
     The main pipeline function that sets up the configuration, seeds, logger, model, callbacks, and trainer.
     It then starts the training process and finally tests the model.
     """
-    pprint(cfg) # OmegaConf.to_yaml(cfg)
+    pprint(OmegaConf.to_yaml(cfg)) # OmegaConf.to_yaml(cfg)
 
     seed_everything(cfg.exp.SEED)
 

@@ -16,6 +16,12 @@ The project requires Python 3.7.12 and several dependencies. You can set up the 
 ```bash
 conda env create -f environment.yml
 ```
+
+You need to connect to your WANDB accout. Generate `<api-key>` from wandb website and add it into at the end of .bashrc file:
+
+```bash
+export WANDB=<api-key>
+```
 ## Configuration
 The project uses YAML configuration files located in the config directory. You can specify the dataset, server, and experiment parameters in config.yaml. Dataset-specific parameters can be set in `dataset/<dataset_name>.yaml`, and server-specific parameters can be set in `server/<server_name>.yaml`.
 

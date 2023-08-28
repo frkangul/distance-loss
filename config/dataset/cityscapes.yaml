@@ -3,8 +3,8 @@ dir: ./data/cityscapes/
 output_class_num: 19
 mode: multilabel
 transform:
-  image_resize_h: 1024
-  image_resize_w: 2048
+  image_resize_h: 512
+  image_resize_w: 1024
 train_dl_batchsize: 32
 val_dl_batchsize: 32
 test_dl_batchsize: 32
