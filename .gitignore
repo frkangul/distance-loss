@@ -8,3 +8,4 @@ logs/
 wandb/
 __pycache__/
 nohup.out
+outputs/
