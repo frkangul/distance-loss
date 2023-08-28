@@ -1,29 +1,29 @@
 defaults:
   - dataset: cityscapes
-  - server: kaggle_T4
+  - server: azure_A100
 
 exp:
   wandb_proj: foreground-car-segm
-  name: T4_deneme
+  name: A100_deneme
   model: Unet # DeepLabV3Plus, UnetPlusPlus, Unet
-  encoder: resnet34 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 
-  loss: dice&focal # dist_transform, bce, iou, dice, dice&bce, dice&focal
+  encoder: resnet50 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 
+  loss: dist_transform # dist_transform, bce, iou, dice, dice&bce, dice&focal
   deterministic: true # for reproducibity. If True, sets whether PyTorch operations must use deterministic algorithms. Set to "warn" to use deterministic algorithms whenever possible. "warn" for DeepLabV3Plus.     
   SEED: 42
 
 trainer:
   max_epoch: 60
   max_time: 02:23:55:00
-  lr: 0.001 # 0.001, 0.0003
+  lr: 0.0003 # 0.001, 0.0003
   reduce_rl_on: false
   patience: 20 # for validation loss
   
 checkpoint:
   motior: val_per_image_bIoU
-  save_dir: /kaggle/working/logs/lightning_logs/checkpoints/
-  resume_dir: /kaggle/input/epoch42-unet/epoch42-Unet-resnet34-lr0.0001-hight512-width512-dodspyne.ckpt
+  save_dir: ./logs/lightning_logs/checkpoints/
+  resume_dir: model.ckpt
 
 vis:
   img_num: 8
   val_batch_id: 5
-  dir: /kaggle/working
+  dir: ./models/cityscapes_dist_transform_unet_r50

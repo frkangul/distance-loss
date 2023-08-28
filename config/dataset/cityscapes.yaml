@@ -1,10 +1,10 @@
 name: Cityscapes
-dir: /kaggle/input/cityscapes/cityscapes/
-output_class_num: 3
+dir: ./data/cityscapes/
+output_class_num: 19
 mode: multilabel
 transform:
-  image_resize_h: 384
-  image_resize_w: 768
+  image_resize_h: 1024
+  image_resize_w: 2048
 train_dl_batchsize: 32
 val_dl_batchsize: 32
 test_dl_batchsize: 32
