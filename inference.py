@@ -64,15 +64,16 @@ def inference_pipeline(cfg: DictConfig):
 
     # show GT mask
     mask_gt = torch.tensor(test_ds[random_img_id]["mask"]) > 0.5 # boolean
-    show(draw_segmentation_masks(image=img, masks=mask_gt, alpha=0.5)) # , colors=["orange"]
-
+    fig_gt, axs_gt = show(draw_segmentation_masks(image=img, masks=mask_gt, alpha=0.5)) # , colors=["orange"]
+    wandb.log({"GT Mask": wandb.Image(fig_gt)})
+    
     # show prediction with the model
     un_img = test_ds[random_img_id]["image"].unsqueeze(0)
     y_hat = model(un_img)
     mask_pred = y_hat.sigmoid()
     mask_pred = (mask_pred > threshold).squeeze(0)
-    show(draw_segmentation_masks(image=img, masks=mask_pred, alpha=0.5)) # , colors=["orange"]
-
+    fig_pred, axs_pred = show(draw_segmentation_masks(image=img, masks=mask_pred, alpha=0.5)) # , colors=["orange"]
+    wandb.log({"Predicted Mask": wandb.Image(fig_pred)})
 
 if __name__ == "__main__":
     inference_pipeline()
