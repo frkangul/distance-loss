@@ -254,7 +254,7 @@ class CityscapesToSmpDataset(Cityscapes):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, target_type="semantic")
-        self.colormap = self._generate_3colormap()
+        self.colormap = self._generate_19colormap()
     
     @staticmethod
     def _transform_binarymask_to_distance_mask(gt_mask):
@@ -381,7 +381,7 @@ class CityscapesToSmpDataset(Cityscapes):
             else:
                 print("target_type can only be 'semantic'")
                 break
-        mask = self._convert_to_3segmentation_mask(target)
+        mask = self._convert_to_19segmentation_mask(target)
         
         sample = dict(image=image, mask=mask)
         if self.transforms is not None:
