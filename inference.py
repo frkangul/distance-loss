@@ -34,7 +34,7 @@ def inference_pipeline(cfg: DictConfig):
     # "VERSION" can be a version (ex: "v2") or an alias ("latest or "best")
     model_ref = "model-uysi6oe1"
     model_version = "v9"
-    checkpoint_ref = f"frkangul/{run}/{model_ref}:{model_version}"
+    checkpoint_ref = f"frkangul/{cfg.exp.wandb_proj}/{model_ref}:{model_version}"
 
     # download checkpoint locally (if not already cached)
     artifact = run.use_artifact(checkpoint_ref, type="model")
