@@ -103,7 +103,7 @@ class ImageSegModel(pl.LightningModule):
         pred_y_th = (prob_y > 0.95).float()
         
         boundary_y = mask_to_boundary_tensor(y, dilation_ratio=0.02)
-        boundary_pred_y = mask_to_boundary_tensor(prob_y, dilation_ratio=0.02)
+        # boundary_pred_y = mask_to_boundary_tensor(prob_y, dilation_ratio=0.02)
    
         if self.cfg.exp.loss == "dist_transform":
             loss = self.loss(logits_y, y_distance, y_distance_sum)
