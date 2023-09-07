@@ -11,6 +11,12 @@ This codebase contains the implementation of a distance loss algorithm for image
 - [Transforms](#transforms)
 
 ## Environment Setup
+Firstly, check if there exists any GPU:
+
+```bash
+nvidia-smi
+```
+
 The project requires Python 3.7.12 and several dependencies. You can set up the environment using the provided `environment.yml` file:
 
 ```bash
@@ -22,16 +28,33 @@ You need to connect to your WANDB accout. Generate `<api-key>` from wandb websit
 ```bash
 export WANDB=<api-key>
 ```
-## Configuration
-The project uses YAML configuration files located in the config directory. You can specify the dataset, server, and experiment parameters in config.yaml. Dataset-specific parameters can be set in `dataset/<dataset_name>.yaml`, and server-specific parameters can be set in `server/<server_name>.yaml`.
 
-## Training
-To start the training process, run the train.py script:
+If there are too much wandb cache, then clean up:
 
 ```bash
-python train.py
+wandb artifact cache cleanup 50GB
 ```
 
+Generate a token on kaggle, then add this kaggle.json token into .kaggle folder.
+## Configuration
+The project uses YAML configuration files located in the config directory. You can specify the dataset, server, and experiment parameters in config.yaml. Dataset-specific parameters can be set in `config/dataset/<dataset_name>.yaml`, and server-specific parameters can be set in `config/server/<server_name>.yaml`.
+
+## Training
+To start the training process in the background and save logs:
+
+```bash
+nohup python train.py &
+```
+To see if the training process continues or not:
+
+```bash
+ps -ef | grep python
+```
+To kill the training process:
+
+```bash
+kill <pid>
+```
 ## Model
 The main model class is ImageSegModel in `plModel.py`. It's a PyTorch Lightning module that encapsulates the model, loss function, optimizer, and learning rate scheduler.
 
