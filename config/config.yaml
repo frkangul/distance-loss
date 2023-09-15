@@ -26,4 +26,4 @@ checkpoint:
 vis:
   img_num: 8
   val_batch_id: 5
-  dir: ./models/deneme
+  dir: /kaggle/working
