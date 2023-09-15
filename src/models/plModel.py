@@ -5,7 +5,7 @@ The ImageSegModel class includes methods for setting up the model, defining the 
 """
 
 import torch
-from torch.nn import BCEWithLogitsLoss
+from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
@@ -56,14 +56,20 @@ class ImageSegModel(pl.LightningModule):
         if cfg.exp.loss == "dist_transform":
             self.loss = DistanceLoss(cfg.dataset.mode, from_logits=True)
         elif cfg.exp.loss == "bce":
-            self.loss = BCEWithLogitsLoss()
+            if cfg.dataset.mode == "binary":
+                self.loss = BCEWithLogitsLoss()
+            else:
+                self.loss = CrossEntropyLoss() # works with logits by default
         elif cfg.exp.loss == "iou":
             self.loss = smp.losses.JaccardLoss(cfg.dataset.mode, from_logits=True)
         elif cfg.exp.loss == "dice":
             self.loss = smp.losses.DiceLoss(cfg.dataset.mode, from_logits=True)
         elif cfg.exp.loss == "dice&bce":
             self.loss_dice = smp.losses.DiceLoss(cfg.dataset.mode, from_logits=True)
-            self.loss_bce = BCEWithLogitsLoss()
+            if cfg.dataset.mode == "binary":
+                self.loss_bce = BCEWithLogitsLoss()
+            else:
+                self.loss_bce = CrossEntropyLoss() # works with logits by default
         elif cfg.exp.loss == "dice&focal":
             self.loss_dice = smp.losses.DiceLoss(cfg.dataset.mode, from_logits=True)
             self.loss_focal = smp.losses.FocalLoss(cfg.dataset.mode) # it uses focal_loss_with_logits
