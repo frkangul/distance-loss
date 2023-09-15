@@ -1,5 +1,5 @@
 name: CelebAMask-HQ
-dir: ./data/CelebAMask-HQ-v2/
+dir: "/kaggle/input/celebamask-hq-v2/CelebAMask-HQ-v2/"
 output_class_num: 1
 mode: binary
 transform:
