@@ -7,7 +7,7 @@ exp:
   name: A100_512_512
   model: DeepLabV3Plus # DeepLabV3Plus, UnetPlusPlus, Unet
   encoder: resnet50 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 
-  loss: dice # dist_transform, bce, iou, dice, dice&bce, dice&focal
+  loss: dice&bce # dist_transform, bce, iou, dice, dice&bce, dice&focal
   deterministic: warn # for reproducibity. If True, sets whether PyTorch operations must use deterministic algorithms. Set to "warn" to use deterministic algorithms whenever possible. "warn" for DeepLabV3Plus.     
   SEED: 42
 
