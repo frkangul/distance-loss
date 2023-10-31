@@ -28,7 +28,7 @@ from typing import (
 )
 import warnings
 warnings.filterwarnings("ignore") # category=DeprecationWarning
-from torchvision.datasets import VisionDataset, Cityscapes
+from torchvision.datasets import VisionDataset, Cityscapes, VOCSegmentation
 from typing import Any, Callable, List, Optional, Tuple
 from scipy import ndimage
 import numpy as np
@@ -467,3 +467,148 @@ class DatasetFromSubset(Dataset):
 
     def __len__(self):
         return len(self.subset)
+
+
+VOC_CLASSES = [
+    "background",
+    "aeroplane",
+    "bicycle",
+    "bird",
+    "boat",
+    "bottle",
+    "bus",
+    "car",
+    "cat",
+    "chair",
+    "cow",
+    "diningtable",
+    "dog",
+    "horse",
+    "motorbike",
+    "person",
+    "potted plant",
+    "sheep",
+    "sofa",
+    "train",
+    "tv/monitor",
+]
+
+
+VOC_COLORMAP = [
+    [0, 0, 0],
+    [128, 0, 0],
+    [0, 128, 0],
+    [128, 128, 0],
+    [0, 0, 128],
+    [128, 0, 128],
+    [0, 128, 128],
+    [128, 128, 128],
+    [64, 0, 0],
+    [192, 0, 0],
+    [64, 128, 0],
+    [192, 128, 0],
+    [64, 0, 128],
+    [192, 0, 128],
+    [64, 128, 128],
+    [192, 128, 128],
+    [0, 64, 0],
+    [128, 64, 0],
+    [0, 192, 0],
+    [128, 192, 0],
+    [0, 64, 128],
+]
+
+# https://github.com/albumentations-team/autoalbument/blob/master/examples/pascal_voc/dataset.py
+class PascalVOCToSmpDataset(VOCSegmentation):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _transform_binarymask_to_distance_mask(gt_mask):
+        """
+        Arguments:
+            gt_mask (ndarray): ground-truth binary mask in HW format
+        Returns:
+            distance_weight (ndarray): normalized between 0 and 1 and outer of object is 1
+            distance_weight_sum (float): sum af all normalized pixel values within inside of object in binary mask
+        """
+        # PART 1: Object distance transform
+        dist = ndimage.distance_transform_cdt(gt_mask) # distance_transform_bf is less efficient
+        reverse_dist = dist.max() - dist
+        reverse_dist = (reverse_dist * gt_mask) # make outer background zero
+        
+        # CONSIDER EDGE CASES LIKE EMPTY AND FULL MASK
+        if reverse_dist.max() == 0:
+            if gt_mask.max() == 0: # Grount-truth mask is empty (hiç bir pixelde etiket yok)
+                # every element in dist is 0
+                # IoU/Distance loss is defined for non-empty classes
+                distance_weight = gt_mask # full of 0s. It doesn't matter since it will be zerout out in loss func
+                distance_weight_sum = np.sum(0)
+                return distance_weight, distance_weight_sum
+            elif gt_mask.min() == 1 : # Grount-truth mask is full (fotoğrafın her pixeli etiket)
+                # every element in dist is -1
+                distance_weight = gt_mask # full of 1s
+                distance_weight_sum = np.sum(distance_weight)
+                return distance_weight, distance_weight_sum
+            else:
+                # If 1s in mask is really less. Ie: small objects. Eg: gt_mask.sum() = 13
+                distance_weight = gt_mask # very less 1s, too many 0s
+                distance_weight_sum = np.sum(distance_weight)
+                return distance_weight, distance_weight_sum
+        
+        inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
+        # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
+
+        # PART 2: Outer distance transform
+        reverse_gt_mask = 1- gt_mask
+
+        # PART 3: Union of inner and outer transforms
+        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
+        # plt.imshow(distance_weight_vis)
+        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
+        distance_weight_sum = np.sum(inner_reverse_dist_n)
+
+        return distance_weight, distance_weight_sum
+    
+    @staticmethod
+    def _convert_to_segmentation_mask(mask):
+        # This function converts a mask from the Pascal VOC format to the format required by AutoAlbument.
+        #
+        # Pascal VOC uses an RGB image to encode the segmentation mask for that image. RGB values of a pixel
+        # encode the pixel's class.
+        #
+        # AutoAlbument requires a segmentation mask to be a NumPy array with the shape [height, width, num_classes].
+        # Each channel in this mask should encode values for a single class. Pixel in a mask channel should have
+        # a value of 1.0 if the pixel of the image belongs to this class and 0.0 otherwise.
+        height, width = mask.shape[:2]
+        segmentation_mask = np.zeros((height, width, len(VOC_COLORMAP)), dtype=np.float32)
+        for label_index, label in enumerate(VOC_COLORMAP):
+            segmentation_mask[:, :, label_index] = np.all(mask == label, axis=-1).astype(float)
+        return segmentation_mask
+
+    def __getitem__(self, index):
+        image = np.array(Image.open(self.images[index]).convert("RGB"))
+        target = np.array(Image.open(self.masks[index]).convert("RGB")).astype(np.float32)
+        # mask = cv2.imread(self.masks[index])
+        # tmask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)
+        
+        mask = self._convert_to_segmentation_mask(target)
+        
+        sample = dict(image=image, mask=mask)
+        if self.transforms is not None:
+            sample = self.transforms(**sample)
+            # check for multiclass case
+            class_num = sample["mask"].shape[2] # HWC shape
+            if class_num > 1: # multiclass
+                sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
+                sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()   
+                for idx in range(class_num):
+                    sample["distance_mask"][:, :, idx], sample["distance_mask_sum"][idx] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"][:, :, idx])) # change binary mask to distance transformed mask 
+                sample["distance_mask"] = sample["distance_mask"].transpose(2, 0, 1) # convert HWC to CHW format
+                # import pdb; pdb.set_trace()
+                sample["mask"] = np.array(sample["mask"]).transpose(2, 0, 1) # convert HWC to CHW format
+            else: # binary class
+                sample["distance_mask"], sample["distance_mask_sum"] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"])) # change binary mask to distance transformed mask
+                sample["distance_mask"] = np.expand_dims(sample["distance_mask"], 0) # convert to CHW format ie. HW -> 1HW:
+                sample["mask"] = np.expand_dims(sample["mask"], 0) # convert to CHW format ie. HW -> 1HW:    
+        return sample
