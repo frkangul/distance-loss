@@ -58,7 +58,8 @@ def pipeline(cfg: DictConfig):
 
     trainer.fit(model) # ckpt_path=cfg.checkpoint.resume_dir, ckpt_path="best"
     
-    trainer.test(model, ckpt_path="best") # ckpt_path="last" to load and evaluate the last model
+    if cfg.dataset.name == "CelebAMask-HQ": # Test data is publicly available
+        trainer.test(model, ckpt_path="best") # ckpt_path="last" to load and evaluate the last model
 
 if __name__ == "__main__":
     pipeline()
