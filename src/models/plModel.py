@@ -13,7 +13,7 @@ import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 import os
 from src.models.distanceLoss import DistanceLoss, mask_to_boundary_tensor
-from src.data.customDatasets import DatasetFromSubset, CocoToSmpDataset, CityscapesToSmpDataset, random_split
+from src.data.customDatasets import DatasetFromSubset, CocoToSmpDataset, CityscapesToSmpDataset, PascalVOCToSmpDataset, random_split
 
 BINARY_MODE: str = "binary"
 MULTICLASS_MODE: str = "multiclass"
@@ -285,9 +285,16 @@ class ImageSegModel(pl.LightningModule):
                                                      split='val', mode='fine', transforms=self.val_transform)
             # Assign test dataset for use in dataloader(s)
             if stage == "test" or stage is None:
-                self.test_ds = CityscapesToSmpDataset(self.cfg.dataset.dir, 
-                                                      split='test', mode='fine', transforms=self.test_transform)
-            
+                pass # There is just private test data
+        elif self.cfg.dataset.name == "PascalVOC2012":
+            if stage == "fit" or stage is None:
+                self.train_ds = PascalVOCToSmpDataset(root=self.cfg.dataset.dir, image_set="train", transforms=self.train_transform)
+                
+                self.val_ds = PascalVOCToSmpDataset(root=self.cfg.dataset.dir, image_set="val", transforms=self.val_transform)
+            # Assign test dataset for use in dataloader(s)
+            if stage == "test" or stage is None:
+                pass # There is just private test data
+                
     def train_dataloader(self):
         return DataLoader(self.train_ds, batch_size=self.cfg.dataset.train_dl_batchsize, shuffle=True, num_workers=self.n_cpu, pin_memory=True)
         # pin_memory will put the fetched data Tensors in pinned memory, and thus enables faster data transfer to CUDA-enabled GPUs
@@ -296,4 +303,7 @@ class ImageSegModel(pl.LightningModule):
         return DataLoader(self.val_ds, batch_size=self.cfg.dataset.val_dl_batchsize, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
 
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.cfg.dataset.test_dl_batchsize, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
+        if self.cfg.dataset.name == "CelebAMask-HQ":
+            return DataLoader(self.test_ds, batch_size=self.cfg.dataset.test_dl_batchsize, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
+        else:
+            pass # Test data is not publicly available
