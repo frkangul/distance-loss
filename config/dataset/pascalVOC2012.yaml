@@ -1,0 +1,10 @@
+name: PascalVOC2012
+dir: /kaggle/input/pascal-voc
+output_class_num: 21
+mode: multilabel
+transform:
+  image_resize_h: 256
+  image_resize_w: 256
+train_dl_batchsize: 32
+val_dl_batchsize: 32
+test_dl_batchsize: 32
