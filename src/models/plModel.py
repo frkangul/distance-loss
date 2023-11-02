@@ -13,7 +13,7 @@ import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 import os
 from src.models.distanceLoss import DistanceLoss, mask_to_boundary_tensor
-from src.data.customDatasets import DatasetFromSubset, CocoToSmpDataset, CityscapesToSmpDataset, PascalVOCToSmpDataset, random_split
+from src.data.customDatasets import DatasetFromSubset, CocoToSmpDataset, CityscapesToSmpDataset, random_split
 
 BINARY_MODE: str = "binary"
 MULTICLASS_MODE: str = "multiclass"
@@ -283,14 +283,6 @@ class ImageSegModel(pl.LightningModule):
                 
                 self.val_ds = CityscapesToSmpDataset(self.cfg.dataset.dir, 
                                                      split='val', mode='fine', transforms=self.val_transform)
-            # Assign test dataset for use in dataloader(s)
-            if stage == "test" or stage is None:
-                pass # There is just private test data
-        elif self.cfg.dataset.name == "PascalVOC2012":
-            if stage == "fit" or stage is None:
-                self.train_ds = PascalVOCToSmpDataset(root=self.cfg.dataset.dir, image_set="train", transforms=self.train_transform)
-                
-                self.val_ds = PascalVOCToSmpDataset(root=self.cfg.dataset.dir, image_set="val", transforms=self.val_transform)
             # Assign test dataset for use in dataloader(s)
             if stage == "test" or stage is None:
                 pass # There is just private test data
