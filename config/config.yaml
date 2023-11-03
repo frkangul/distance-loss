@@ -4,7 +4,7 @@ defaults:
 
 exp:
   wandb_proj: foreground-car-segm
-  name: kaggle_T4
+  name: A100_512_512
   model: DeepLabV3Plus # DeepLabV3Plus, UnetPlusPlus, Unet, FPN
   encoder: resnet50 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 
   loss: dist_transform # dist_transform, bce, iou, dice, dice&bce, dice&focal
