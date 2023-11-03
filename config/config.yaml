@@ -4,12 +4,12 @@ defaults:
 
 exp:
   wandb_proj: foreground-car-segm
-  name: A100_512_512
+  name: A100_512_512_APPX_DIFF_SEED
   model: DeepLabV3Plus # DeepLabV3Plus, UnetPlusPlus, Unet, FPN
   encoder: resnet50 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 
   loss: dist_transform # dist_transform, bce, iou, dice, dice&bce, dice&focal
   deterministic: warn # for reproducibity. If True, sets whether PyTorch operations must use deterministic algorithms. Set to "warn" to use deterministic algorithms whenever possible. "warn" for DeepLabV3Plus.     
-  SEED: 42
+  SEED: 1234
 
 trainer:
   max_epoch: 60
