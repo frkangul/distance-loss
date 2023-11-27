@@ -71,8 +71,7 @@ def soft_distance_score(
     if dims is not None:
         intersection = torch.sum(output * target, dim=dims)
     else:
-        intersection = torch.sum(output * target)
-        
+        intersection = torch.sum(output * target)   
     distance_score = intersection / (target_sum + smooth).clamp_min(eps)
     return distance_score
 
@@ -153,7 +152,8 @@ class DistanceLoss(_Loss):
         if self.mode == MULTILABEL_MODE:
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
-        
+            y_true_sum = y_true_sum.squeeze() # from the size of (bs, num_classes, 1) to the size of (bs, num_classes) for shape compatibility
+
         scores = soft_distance_score(
             y_pred,
             y_true.type_as(y_pred), # y_true.type(y_pred.dtype)
