@@ -140,7 +140,7 @@ class DistanceLoss(_Loss):
         if self.mode == BINARY_MODE:
             y_true = y_true.view(bs, 1, -1)
             y_pred = y_pred.view(bs, 1, -1)
-            y_true_sum = y_true_sum.unsqueeze(dim=-1) # from the size of (bs) to the size of (bs, 1) for shape compatibility
+            y_true_sum = y_true_sum.view(bs, 1) # y_true_sum.unsqueeze(dim=-1) # from the size of (bs) to the size of (bs, 1) for shape compatibility
 
         if self.mode == MULTICLASS_MODE:
             y_true = y_true.view(bs, -1)
@@ -152,7 +152,7 @@ class DistanceLoss(_Loss):
         if self.mode == MULTILABEL_MODE:
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
-            y_true_sum = y_true_sum.squeeze() # from the size of (bs, num_classes, 1) to the size of (bs, num_classes) for shape compatibility
+            y_true_sum = y_true_sum.view(bs, num_classes) # y_true_sum.squeeze() # from the size of (bs, num_classes, 1) to the size of (bs, num_classes) for shape compatibility
 
         scores = soft_distance_score(
             y_pred,
