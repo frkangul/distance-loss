@@ -70,12 +70,10 @@ def soft_distance_score(
     assert output.size() == target.size()
     if dims is not None:
         intersection = torch.sum(output * target, dim=dims)
-        cardinality = torch.sum(target_sum) # torch.sum(target_sum, dim=dims)
     else:
         intersection = torch.sum(output * target)
-        cardinality = torch.sum(target_sum)
         
-    distance_score = intersection / (cardinality + smooth).clamp_min(eps)
+    distance_score = intersection / (target_sum + smooth).clamp_min(eps)
     return distance_score
 
 __all__ = ["DistanceLoss"]
@@ -138,11 +136,12 @@ class DistanceLoss(_Loss):
 
         bs = y_true.size(0)
         num_classes = y_pred.size(1)
-        dims = (0, 2)
+        dims = (2) # make operations over each image and each class seperately
 
         if self.mode == BINARY_MODE:
             y_true = y_true.view(bs, 1, -1)
             y_pred = y_pred.view(bs, 1, -1)
+            y_true_sum = y_true_sum.unsqueeze(dim=-1) # from the size of (bs) to the size of (bs, 1) for shape compatibility
 
         if self.mode == MULTICLASS_MODE:
             y_true = y_true.view(bs, -1)
