@@ -157,16 +157,9 @@ class CocoToSmpDataset(VisionDataset):
         inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
         # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
 
-        # PART 2: Outer distance transform
-        reverse_gt_mask = 1- gt_mask
-
-        # PART 3: Union of inner and outer transforms
-        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
-        # plt.imshow(distance_weight_vis)
-        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
         distance_weight_sum = np.sum(inner_reverse_dist_n)
 
-        return distance_weight, distance_weight_sum
+        return inner_reverse_dist_n, distance_weight_sum
 
     def _load_image(self, id: int) -> Image.Image:
         path = self.coco.loadImgs(id)[0]["file_name"]
@@ -292,16 +285,9 @@ class CityscapesToSmpDataset(Cityscapes):
         inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
         # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
 
-        # PART 2: Outer distance transform
-        reverse_gt_mask = 1- gt_mask
-
-        # PART 3: Union of inner and outer transforms
-        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
-        # plt.imshow(distance_weight_vis)
-        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
         distance_weight_sum = np.sum(inner_reverse_dist_n)
 
-        return distance_weight, distance_weight_sum
+        return inner_reverse_dist_n, distance_weight_sum
     
     # https://github.com/albumentations-team/autoalbument/blob/master/examples/cityscapes/dataset.py
     def _generate_19colormap(self):
@@ -444,16 +430,9 @@ class DatasetFromSubset(Dataset):
         inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
         # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
 
-        # PART 2: Outer distance transform
-        reverse_gt_mask = 1- gt_mask
-
-        # PART 3: Union of inner and outer transforms
-        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
-        # plt.imshow(distance_weight_vis)
-        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
         distance_weight_sum = np.sum(inner_reverse_dist_n)
 
-        return distance_weight, distance_weight_sum
+        return inner_reverse_dist_n, distance_weight_sum
     
     def __getitem__(self, index):
         sample = self.subset[index]
