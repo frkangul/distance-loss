@@ -112,7 +112,7 @@ class ImageSegModel(pl.LightningModule):
         # boundary_pred_y = mask_to_boundary_tensor(prob_y, dilation_ratio=0.02)
    
         if self.cfg.exp.loss == "dist_transform":
-            loss = self.loss(logits_y, y_distance, y_distance_sum)
+            loss = self.loss(logits_y, y_distance, y_distance_sum, y)
         elif self.cfg.exp.loss == "dice&bce":
             loss = self.loss_dice(logits_y, y) + self.loss_bce(logits_y, y)
         elif self.cfg.exp.loss == "dice&focal":
@@ -133,7 +133,7 @@ class ImageSegModel(pl.LightningModule):
         b_tp, b_fp, b_fn, b_tn = smp.metrics.get_stats(boundary_pred_y_th.long(), boundary_y.long(), mode=self.cfg.dataset.mode, num_classes=self.cfg.dataset.output_class_num)
         
         # Calculate distance transform evaluation metric here. Do not concaterate in the epoch_end and then evaluate since it will require more computation.
-        distance_transform_metric = 1- self.distance_transform_metric(pred_y_th, y_distance, y_distance_sum)
+        distance_transform_metric = 1- self.distance_transform_metric(pred_y_th, y_distance, y_distance_sum, y)
         self.log(f"{stage}_distance_transform_evalmetric", distance_transform_metric, on_step=False, on_epoch=True, prog_bar=True)
         
         return {

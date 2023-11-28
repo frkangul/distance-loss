@@ -120,7 +120,7 @@ class DistanceLoss(_Loss):
         self.eps = eps
         self.log_loss = log_loss
 
-    def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor, y_true_sum: torch.Tensor) -> torch.Tensor:
+    def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor, y_true_sum: torch.Tensor, y_org_mask: torch.Tensor) -> torch.Tensor:
 
         assert y_true.size(0) == y_pred.size(0)
 
@@ -141,6 +141,7 @@ class DistanceLoss(_Loss):
             y_true = y_true.view(bs, 1, -1)
             y_pred = y_pred.view(bs, 1, -1)
             y_true_sum = y_true_sum.view(bs, 1) # y_true_sum.unsqueeze(dim=-1) # from the size of (bs) to the size of (bs, 1) for shape compatibility
+            y_org_mask = y_org_mask.view(bs, 1, -1)
 
         if self.mode == MULTICLASS_MODE:
             y_true = y_true.view(bs, -1)
@@ -153,11 +154,14 @@ class DistanceLoss(_Loss):
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
             y_true_sum = y_true_sum.view(bs, num_classes) # y_true_sum.squeeze() # from the size of (bs, num_classes, 1) to the size of (bs, num_classes) for shape compatibility
+            y_org_mask = y_org_mask.view(bs, num_classes, -1)
+
+        y_true_sum_updated = y_true_sum + torch.sum((1 - y_org_mask)*y_pred, dim=dims) # to penalize the wrong preds outside of objects
 
         scores = soft_distance_score(
             y_pred,
             y_true.type_as(y_pred), # y_true.type(y_pred.dtype)
-            target_sum=y_true_sum,
+            target_sum=y_true_sum_updated,
             smooth=self.smooth,
             eps=self.eps,
             dims=dims,
@@ -172,8 +176,8 @@ class DistanceLoss(_Loss):
         # NOTE: A better workaround would be to use loss term `mean(y_pred)`
         # for this case, however it will be a modified jaccard loss
         
-        mask = y_true_sum.sum() > 0 # y_true.sum(dims) > 0
-        loss *= mask.to(loss.dtype) # mask.float()
+        mask = y_org_mask.sum(dims) > 0 # y_true_sum.sum() > 0, y_true.sum(dims) > 0
+        loss *= mask.to(loss.dtype)
             
         if self.classes is not None:
             loss = loss[self.classes]
