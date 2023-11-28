@@ -6,7 +6,7 @@ exp:
   wandb_proj: foreground-car-segm
   name: A100_512_512_DIST_FIX
   model: Unet # DeepLabV3Plus, UnetPlusPlus, Unet, FPN
-  encoder: resnet50 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 
+  encoder: mobilenet_v2 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 
   loss: dist_transform # dist_transform, bce, iou, dice, dice&bce, dice&focal
   deterministic: true # for reproducibity. If True, sets whether PyTorch operations must use deterministic algorithms. Set to "warn" to use deterministic algorithms whenever possible. "warn" for DeepLabV3Plus.     
   SEED: 42
