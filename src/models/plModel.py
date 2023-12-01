@@ -288,14 +288,14 @@ class ImageSegModel(pl.LightningModule):
                 pass # There is just private test data
                 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.cfg.dataset.train_dl_batchsize, shuffle=True, num_workers=self.n_cpu, pin_memory=True)
+        return DataLoader(self.train_ds, batch_size=self.cfg.dataset.train_dl_batchsize, shuffle=True, num_workers=self.n_cpu-1, pin_memory=True)
         # pin_memory will put the fetched data Tensors in pinned memory, and thus enables faster data transfer to CUDA-enabled GPUs
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=self.cfg.dataset.val_dl_batchsize, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
+        return DataLoader(self.val_ds, batch_size=self.cfg.dataset.val_dl_batchsize, shuffle=False, num_workers=self.n_cpu-1, pin_memory=True)
 
     def test_dataloader(self):
         if self.cfg.dataset.name == "CelebAMask-HQ":
-            return DataLoader(self.test_ds, batch_size=self.cfg.dataset.test_dl_batchsize, shuffle=False, num_workers=self.n_cpu, pin_memory=True)
+            return DataLoader(self.test_ds, batch_size=self.cfg.dataset.test_dl_batchsize, shuffle=False, num_workers=self.n_cpu-1, pin_memory=True)
         else:
             pass # Test data is not publicly available
