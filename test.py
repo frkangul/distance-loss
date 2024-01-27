@@ -36,6 +36,9 @@ def test_pipeline(cfg: DictConfig):
     # wandb_logger = setup_wandb_and_logger(cfg)
     import os
     import wandb
+    from dotenv import load_dotenv
+
+    load_dotenv()
     WANDB_KEY= os.environ["WANDB"]
     wandb.login(key=WANDB_KEY)
     run = wandb.init()

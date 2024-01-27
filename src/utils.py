@@ -17,7 +17,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, Learning
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 from pytorch_lightning.loggers import WandbLogger
 from src.plCallbacks import LogSegPredictionCallback
+from dotenv import load_dotenv
 
+load_dotenv()
 WANDB_KEY= os.environ["WANDB"]
 
 def seed_everything(seed: int):

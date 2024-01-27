@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import hydra
 from omegaconf import DictConfig, OmegaConf
+from dotenv import load_dotenv
+
+load_dotenv()
 
 WANDB_KEY= os.environ["WANDB"]
 wandb.login(key=WANDB_KEY)

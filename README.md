@@ -21,6 +21,7 @@ The project requires Python 3.7.12 and several dependencies. You can set up the 
 
 ```bash
 conda env create -f environment.yml
+conda activate distance-loss
 ```
 
 You need to connect to your WANDB accout. Generate `<api-key>` from wandb website and add it into at the end of .bashrc file:
@@ -38,6 +39,13 @@ wandb artifact cache cleanup 50GB
 Generate a token on kaggle, then add this kaggle.json token into .kaggle folder.
 ## Configuration
 The project uses YAML configuration files located in the config directory. You can specify the dataset, server, and experiment parameters in config.yaml. Dataset-specific parameters can be set in `config/dataset/<dataset_name>.yaml`, and server-specific parameters can be set in `config/server/<server_name>.yaml`.
+
+Create a `.env` file in the root directory of the project with the following variables:
+```bash
+WANDB=your_wandb_api_key
+```
+
+Replace your_wandb_api_key with your actual WANDB API key.
 
 ## Training
 To start the training process in the background and save logs:
