@@ -41,6 +41,7 @@ MULTICLASS_MODE: str = "multiclass"
 #: Target mask shape - (N, C, H, W), model output mask shape (N, C, H, W).
 MULTILABEL_MODE: str = "multilabel"
 
+
 # https://github.com/qubvel/segmentation_models.pytorch/blob/master/segmentation_models_pytorch/losses/_functional.py
 def to_tensor(x, dtype=None) -> torch.Tensor:
     if isinstance(x, torch.Tensor):
@@ -58,7 +59,8 @@ def to_tensor(x, dtype=None) -> torch.Tensor:
         if dtype is not None:
             x = x.type(dtype)
         return x
-    
+
+
 def soft_distance_score(
     output: torch.Tensor,
     target: torch.Tensor,
@@ -71,11 +73,13 @@ def soft_distance_score(
     if dims is not None:
         intersection = torch.sum(output * target, dim=dims)
     else:
-        intersection = torch.sum(output * target)   
+        intersection = torch.sum(output * target)
     distance_score = intersection / (target_sum + smooth).clamp_min(eps)
     return distance_score
 
+
 __all__ = ["DistanceLoss"]
+
 
 class DistanceLoss(_Loss):
     def __init__(
@@ -111,7 +115,9 @@ class DistanceLoss(_Loss):
 
         self.mode = mode
         if classes is not None:
-            assert mode != BINARY_MODE, "Masking classes is not supported with mode=binary"
+            assert (
+                mode != BINARY_MODE
+            ), "Masking classes is not supported with mode=binary"
             classes = to_tensor(classes, dtype=torch.long)
 
         self.classes = classes
@@ -120,8 +126,13 @@ class DistanceLoss(_Loss):
         self.eps = eps
         self.log_loss = log_loss
 
-    def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor, y_true_sum: torch.Tensor, y_org_mask: torch.Tensor) -> torch.Tensor:
-
+    def forward(
+        self,
+        y_pred: torch.Tensor,
+        y_true: torch.Tensor,
+        y_true_sum: torch.Tensor,
+        y_org_mask: torch.Tensor,
+    ) -> torch.Tensor:
         assert y_true.size(0) == y_pred.size(0)
 
         if self.from_logits:
@@ -135,12 +146,14 @@ class DistanceLoss(_Loss):
 
         bs = y_true.size(0)
         num_classes = y_pred.size(1)
-        dims = (2) # make operations over each image and each class seperately
+        dims = 2  # make operations over each image and each class seperately
 
         if self.mode == BINARY_MODE:
             y_true = y_true.view(bs, 1, -1)
             y_pred = y_pred.view(bs, 1, -1)
-            y_true_sum = y_true_sum.view(bs, 1) # y_true_sum.unsqueeze(dim=-1) # from the size of (bs) to the size of (bs, 1) for shape compatibility
+            y_true_sum = y_true_sum.view(
+                bs, 1
+            )  # y_true_sum.unsqueeze(dim=-1) # from the size of (bs) to the size of (bs, 1) for shape compatibility
             y_org_mask = y_org_mask.view(bs, 1, -1)
 
         if self.mode == MULTICLASS_MODE:
@@ -153,14 +166,18 @@ class DistanceLoss(_Loss):
         if self.mode == MULTILABEL_MODE:
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
-            y_true_sum = y_true_sum.view(bs, num_classes) # y_true_sum.squeeze() # from the size of (bs, num_classes, 1) to the size of (bs, num_classes) for shape compatibility
+            y_true_sum = y_true_sum.view(
+                bs, num_classes
+            )  # y_true_sum.squeeze() # from the size of (bs, num_classes, 1) to the size of (bs, num_classes) for shape compatibility
             y_org_mask = y_org_mask.view(bs, num_classes, -1)
 
-        y_true_sum_updated = y_true_sum + torch.sum((1 - y_org_mask)*y_pred, dim=dims) # to penalize the wrong preds outside of objects
+        y_true_sum_updated = y_true_sum + torch.sum(
+            (1 - y_org_mask) * y_pred, dim=dims
+        )  # to penalize the wrong preds outside of objects
 
         scores = soft_distance_score(
             y_pred,
-            y_true.type_as(y_pred), # y_true.type(y_pred.dtype)
+            y_true.type_as(y_pred),  # y_true.type(y_pred.dtype)
             target_sum=y_true_sum_updated,
             smooth=self.smooth,
             eps=self.eps,
@@ -175,14 +192,15 @@ class DistanceLoss(_Loss):
         # So we zero contribution of channel that does not have true pixels
         # NOTE: A better workaround would be to use loss term `mean(y_pred)`
         # for this case, however it will be a modified jaccard loss
-        
-        mask = y_org_mask.sum(dims) > 0 # y_true_sum.sum() > 0, y_true.sum(dims) > 0
+
+        mask = y_org_mask.sum(dims) > 0  # y_true_sum.sum() > 0, y_true.sum(dims) > 0
         loss *= mask.to(loss.dtype)
-            
+
         if self.classes is not None:
             loss = loss[self.classes]
 
         return loss.mean()
+
 
 # BOUNDARY IOU TENSOR IMPLEMENTATION
 # General util function to get the boundary of a binary mask.
@@ -192,41 +210,55 @@ def mask_to_boundary_tensor(mask, dilation_ratio=0.02):
     Arguments:
         mask (torch.Tensor): mask of torch.Tensor of shape (N, C, H, W)
         dilation_ratio (float): ratio to calculate dilation = dilation_ratio * image_diagonal
-    Returns: 
+    Returns:
         boundary mask (torch.Tensor): boundary mask of torch.Tensor of shape (N, C, H, W)
     """
     nb, c, h, w = mask.shape
-    img_diag = np.sqrt(h ** 2 + w ** 2)
+    img_diag = np.sqrt(h**2 + w**2)
     dilation = int(round(dilation_ratio * img_diag))
     if dilation < 1:
         dilation = 1
-        
+
     boundary_mask = torch.zeros_like(mask)
     kernel = np.ones((3, 3), dtype=np.uint8)
-    for idx, img_tensor in enumerate(mask[:,]): # img_tensor will be in the shape of (C, H, W)
-        if c > 1: # multiclass case
-            for c_idx, img_tensor_ in enumerate(img_tensor[:,]): # img_tensor_ will be in the shape of (H, W)
-                # From tensor to numpy
+    for idx, img_tensor in enumerate(
+        mask[:,]
+    ):  # img_tensor will be in the shape of (C, H, W)
+        if c > 1:  # multiclass case
+            for c_idx, img_tensor_ in enumerate(
+                img_tensor[:,]
+            ):  # img_tensor_ will be in the shape of (H, W)
+                # From tensor to numpy
                 img_np = np.array(img_tensor_.cpu().detach(), dtype="uint8")
                 # Pad image so mask truncated by the image border is also considered as boundary.
-                new_mask = cv2.copyMakeBorder(img_np, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+                new_mask = cv2.copyMakeBorder(
+                    img_np, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0
+                )
                 new_mask_erode = cv2.erode(new_mask, kernel, iterations=dilation)
-                mask_erode = new_mask_erode[1 : h + 1, 1 : w + 1] # in the shape of (H, W)
+                mask_erode = new_mask_erode[
+                    1 : h + 1, 1 : w + 1
+                ]  # in the shape of (H, W)
                 boundary_mask_np = img_np - mask_erode
                 boundary_mask_np = np.expand_dims(boundary_mask_np, 0)
                 # import pdb; pdb.set_trace()
-                # From numpy to tensor
+                # From numpy to tensor
                 boundary_mask[idx, c_idx] = torch.tensor(boundary_mask_np)
-        elif c == 1: # binary case
-            # From tensor to numpy
-            img_np = np.array(img_tensor.cpu().detach(), dtype="uint8").transpose(1, 2, 0).squeeze() # in the shape of (H, W, C) -> (H, W) since C=1
+        elif c == 1:  # binary case
+            # From tensor to numpy
+            img_np = (
+                np.array(img_tensor.cpu().detach(), dtype="uint8")
+                .transpose(1, 2, 0)
+                .squeeze()
+            )  # in the shape of (H, W, C) -> (H, W) since C=1
             # Pad image so mask truncated by the image border is also considered as boundary.
-            new_mask = cv2.copyMakeBorder(img_np, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+            new_mask = cv2.copyMakeBorder(
+                img_np, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0
+            )
             new_mask_erode = cv2.erode(new_mask, kernel, iterations=dilation)
-            mask_erode = new_mask_erode[1 : h + 1, 1 : w + 1] # in the shape of (H, W)
+            mask_erode = new_mask_erode[1 : h + 1, 1 : w + 1]  # in the shape of (H, W)
             boundary_mask_np = img_np - mask_erode
             boundary_mask_np = np.expand_dims(boundary_mask_np, 0)
             # import pdb; pdb.set_trace()
-            # From numpy to tensor
+            # From numpy to tensor
             boundary_mask[idx,] = torch.tensor(boundary_mask_np)
     return boundary_mask

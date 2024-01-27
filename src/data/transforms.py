@@ -17,30 +17,75 @@ def get_transforms(cfg):
     """
 
     transforms = {
-        "train": A.Compose([
-            # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
-            A.LongestMaxSize(max(cfg.dataset.transform.image_resize_h, cfg.dataset.transform.image_resize_w)),
-            A.PadIfNeeded(min_height=cfg.dataset.transform.image_resize_h, min_width=cfg.dataset.transform.image_resize_w, border_mode=cv2.BORDER_REFLECT_101),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-            ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-            ]),
-        "val": A.Compose([
-            # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
-            A.LongestMaxSize(max(cfg.dataset.transform.image_resize_h, cfg.dataset.transform.image_resize_w)),
-            A.PadIfNeeded(min_height=cfg.dataset.transform.image_resize_h, min_width=cfg.dataset.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-            ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-        ]),
-        "test": A.Compose([
-            A.LongestMaxSize(max(cfg.dataset.transform.image_resize_h, cfg.dataset.transform.image_resize_w)),
-            A.PadIfNeeded(min_height=cfg.dataset.transform.image_resize_h, min_width=cfg.dataset.transform.image_resize_w, border_mode=cv2.BORDER_CONSTANT),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # use ImageNet image normalization 
-            ToTensorV2() # numpy HWC image is converted to pytorch CHW tensor
-        ]),
-        "unnorm": A.Compose([
-            A.Normalize(mean=(-0.485/0.229, -0.456/0.224, -0.406/0.225), std=(1.0/0.229, 1.0/0.224, 1.0/0.225), max_pixel_value=1.0),
-            ToTensorV2()
-            ]) # -mean / std, 1.0 / std for unnormalization
+        "train": A.Compose(
+            [
+                # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
+                A.LongestMaxSize(
+                    max(
+                        cfg.dataset.transform.image_resize_h,
+                        cfg.dataset.transform.image_resize_w,
+                    )
+                ),
+                A.PadIfNeeded(
+                    min_height=cfg.dataset.transform.image_resize_h,
+                    min_width=cfg.dataset.transform.image_resize_w,
+                    border_mode=cv2.BORDER_REFLECT_101,
+                ),
+                A.Normalize(
+                    mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
+                ),  # use ImageNet image normalization
+                ToTensorV2(),  # numpy HWC image is converted to pytorch CHW tensor
+            ]
+        ),
+        "val": A.Compose(
+            [
+                # A.Resize(height=cfg.transform.image_resize_h, width=cfg.transform.image_resize_w),
+                A.LongestMaxSize(
+                    max(
+                        cfg.dataset.transform.image_resize_h,
+                        cfg.dataset.transform.image_resize_w,
+                    )
+                ),
+                A.PadIfNeeded(
+                    min_height=cfg.dataset.transform.image_resize_h,
+                    min_width=cfg.dataset.transform.image_resize_w,
+                    border_mode=cv2.BORDER_CONSTANT,
+                ),
+                A.Normalize(
+                    mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
+                ),  # use ImageNet image normalization
+                ToTensorV2(),  # numpy HWC image is converted to pytorch CHW tensor
+            ]
+        ),
+        "test": A.Compose(
+            [
+                A.LongestMaxSize(
+                    max(
+                        cfg.dataset.transform.image_resize_h,
+                        cfg.dataset.transform.image_resize_w,
+                    )
+                ),
+                A.PadIfNeeded(
+                    min_height=cfg.dataset.transform.image_resize_h,
+                    min_width=cfg.dataset.transform.image_resize_w,
+                    border_mode=cv2.BORDER_CONSTANT,
+                ),
+                A.Normalize(
+                    mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
+                ),  # use ImageNet image normalization
+                ToTensorV2(),  # numpy HWC image is converted to pytorch CHW tensor
+            ]
+        ),
+        "unnorm": A.Compose(
+            [
+                A.Normalize(
+                    mean=(-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225),
+                    std=(1.0 / 0.229, 1.0 / 0.224, 1.0 / 0.225),
+                    max_pixel_value=1.0,
+                ),
+                ToTensorV2(),
+            ]
+        ),  # -mean / std, 1.0 / std for unnormalization
     }
 
     return transforms

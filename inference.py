@@ -7,16 +7,17 @@ from src.data.customDatasets import CocoToSmpDataset, CityscapesToSmpDataset
 import torch
 from torchvision.utils import draw_segmentation_masks
 import torchvision.transforms.functional as visF
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import numpy as np
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from dotenv import load_dotenv
 
 load_dotenv()
 
-WANDB_KEY= os.environ["WANDB"]
+WANDB_KEY = os.environ["WANDB"]
 wandb.login(key=WANDB_KEY)
+
 
 def show(imgs):
     if not isinstance(imgs, list):
@@ -28,6 +29,7 @@ def show(imgs):
         axs[0, i].imshow(np.asarray(img))
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
         return fig, axs
+
 
 @hydra.main(version_base=None, config_path="./config", config_name="config")
 def inference_pipeline(cfg: DictConfig):
@@ -48,39 +50,49 @@ def inference_pipeline(cfg: DictConfig):
 
     # disable randomness, dropout, etc...
     model.eval()
-    
+
     transforms = get_transforms(cfg)
 
     if cfg.dataset.name == "CelebAMask-HQ":
-        test_ds = CocoToSmpDataset(root=os.path.join(cfg.dataset.dir, "test"),
-                                   annFile=os.path.join(cfg.dataset.dir, "annotations_test.json"),
-                                   transforms=transforms["test"])
+        test_ds = CocoToSmpDataset(
+            root=os.path.join(cfg.dataset.dir, "test"),
+            annFile=os.path.join(cfg.dataset.dir, "annotations_test.json"),
+            transforms=transforms["test"],
+        )
     elif cfg.dataset.name == "Cityscapes":
-        test_ds = CityscapesToSmpDataset(cfg.dataset.dir, split='test',
-                                         mode='fine', transforms=transforms["test"])
+        test_ds = CityscapesToSmpDataset(
+            cfg.dataset.dir, split="test", mode="fine", transforms=transforms["test"]
+        )
 
     random_img_id = 4
     threshold = 0.5
-    
-    un_img = np.array(test_ds[random_img_id]["image"]).transpose((1, 2, 0)) # CHW -> HWC
-    img = (transforms["unnorm"](image=un_img)["image"]*255).to(torch.uint8)
+
+    un_img = np.array(test_ds[random_img_id]["image"]).transpose(
+        (1, 2, 0)
+    )  # CHW -> HWC
+    img = (transforms["unnorm"](image=un_img)["image"] * 255).to(torch.uint8)
     print(img.shape)
-    
+
     # show GT mask
-    mask_gt = torch.tensor(test_ds[random_img_id]["mask"]) > 0.5 # boolean
-    fig_gt, axs_gt = show(draw_segmentation_masks(image=img, masks=mask_gt, alpha=0.5)) # , colors=["orange"]
+    mask_gt = torch.tensor(test_ds[random_img_id]["mask"]) > 0.5  # boolean
+    fig_gt, axs_gt = show(
+        draw_segmentation_masks(image=img, masks=mask_gt, alpha=0.5)
+    )  # , colors=["orange"]
     wandb.log({"GT Mask": wandb.Image(fig_gt)})
     print(mask_gt.shape)
-    
+
     # show prediction with the model
     un_img = test_ds[random_img_id]["image"].unsqueeze(0)
     y_hat = model(un_img)
     mask_pred = y_hat.sigmoid()
     print(mask_pred.shape)
     mask_pred = (mask_pred > threshold).squeeze(0)
-    fig_pred, axs_pred = show(draw_segmentation_masks(image=img, masks=mask_pred, alpha=0.5)) # , colors=["orange"]
+    fig_pred, axs_pred = show(
+        draw_segmentation_masks(image=img, masks=mask_pred, alpha=0.5)
+    )  # , colors=["orange"]
     wandb.log({"Predicted Mask": wandb.Image(fig_pred)})
     print(mask_pred.shape)
-    
+
+
 if __name__ == "__main__":
     inference_pipeline()

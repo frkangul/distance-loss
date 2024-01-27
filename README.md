@@ -1,6 +1,7 @@
-# Distance Loss
+# A Distance Transform Based Loss Function for the Semantic Segmentation of Very High Resolution Remote Sensing Images
 
-This codebase contains the implementation of a distance loss algorithm for image segmentation tasks. I also includes training an image segmentation model. The project uses PyTorch Lightning for training and Weights & Biases for experiment tracking.
+## Overview
+This repository contains the source code and additional materials associated with the paper titled "A Distance Transform Based Loss Function for the Semantic Segmentation of Very High Resolution Remote Sensing Images," submitted to the IGARSS 2024 conference. This codebase contains the implementation of a distance loss algorithm for image segmentation tasks. It also includes training an image segmentation model. The project uses PyTorch Lightning for training and Weights & Biases for experiment tracking.
 
 ## Table of Contents
 - [Environment Setup](#environment-etup)
@@ -23,11 +24,19 @@ The project requires Python 3.7.12 and several dependencies. You can set up the 
 conda env create -f environment.yml
 conda activate distance-loss
 ```
+## Configuration
+The project uses YAML configuration files located in the config directory. You can specify the dataset, server, and experiment parameters in config.yaml. Dataset-specific parameters can be set in `config/dataset/<dataset_name>.yaml`, and server-specific parameters can be set in `config/server/<server_name>.yaml`.
 
-You need to connect to your WANDB accout. Generate `<api-key>` from wandb website and add it into at the end of .bashrc file:
+You need to connect to your WANDB accout. Generate `<your_wandb_api_key>` from wandb website and add it into at the end of .bashrc file:
 
 ```bash
 export WANDB=<api-key>
+```
+
+Create a `.env` file in the root directory of the project. You need to connect to your WANDB accout. Generate WANDB API key from wandb website and add it into `.env` file as  `<your_wandb_api_key>`. See below:
+
+```bash
+WANDB=your_wandb_api_key
 ```
 
 If there are too much wandb cache, then clean up:
@@ -37,15 +46,6 @@ wandb artifact cache cleanup 50GB
 ```
 
 Generate a token on kaggle, then add this kaggle.json token into .kaggle folder.
-## Configuration
-The project uses YAML configuration files located in the config directory. You can specify the dataset, server, and experiment parameters in config.yaml. Dataset-specific parameters can be set in `config/dataset/<dataset_name>.yaml`, and server-specific parameters can be set in `config/server/<server_name>.yaml`.
-
-Create a `.env` file in the root directory of the project with the following variables:
-```bash
-WANDB=your_wandb_api_key
-```
-
-Replace your_wandb_api_key with your actual WANDB API key.
 
 ## Training
 To start the training process in the background and save logs:
