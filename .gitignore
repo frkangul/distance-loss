@@ -5,7 +5,6 @@ resulting_imgs/
 logs/
 wandb/
 __pycache__/
-nohup.out
 outputs/
 *.DS_Store
 artifacts/
