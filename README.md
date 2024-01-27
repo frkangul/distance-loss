@@ -6,6 +6,7 @@ This repository contains the source code and additional materials associated wit
 ## Table of Contents
 - [Environment Setup](#environment-etup)
 - [Configuration](#configuration)
+- [Data](#data)
 - [Training](#training)
 - [Model](#model)
 - [Custom Datasets](#custom-datasets)
@@ -46,7 +47,8 @@ wandb artifact cache cleanup 50GB
 ```
 
 Generate a token on kaggle, then add this kaggle.json token into .kaggle folder.
-
+## Data
+Create a folder, named `data`, in the root directory of repository to store both CelebAMask-HQ (in coco format) and Cityscapes (it should contain `gtFine` and `leftImng8bit` folders) datasets. 
 ## Training
 To start the training process in the background and save logs:
 
