@@ -19,3 +19,4 @@ dependencies:
     - pandas==1.3.5
     - kaggle==1.5.16
     - hydra-core==1.3
+    - python-dotenv==0.21.1

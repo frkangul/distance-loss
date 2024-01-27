@@ -15,19 +15,10 @@ from torch import Generator
 from torch import default_generator, randperm
 from torch._utils import _accumulate
 from torch.utils.data.dataset import Subset
-from typing import (
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union
-)
+from typing import List, Optional, Sequence, Tuple, TypeVar, Union
 import warnings
-warnings.filterwarnings("ignore") # category=DeprecationWarning
+
+warnings.filterwarnings("ignore")  # category=DeprecationWarning
 from torchvision.datasets import VisionDataset, Cityscapes
 from typing import Any, Callable, List, Optional, Tuple
 from scipy import ndimage
@@ -36,10 +27,14 @@ from PIL import Image
 import os
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
-def random_split(dataset: Dataset[T], lengths: Sequence[Union[int, float]],
-                 generator: Optional[Generator] = default_generator) -> List[Subset[T]]:
+
+def random_split(
+    dataset: Dataset[T],
+    lengths: Sequence[Union[int, float]],
+    generator: Optional[Generator] = default_generator,
+) -> List[Subset[T]]:
     r"""
     Randomly split a dataset into non-overlapping new datasets of given lengths.
 
@@ -79,15 +74,22 @@ def random_split(dataset: Dataset[T], lengths: Sequence[Union[int, float]],
         lengths = subset_lengths
         for i, length in enumerate(lengths):
             if length == 0:
-                warnings.warn(f"Length of split at index {i} is 0. "
-                              f"This might result in an empty dataset.")
+                warnings.warn(
+                    f"Length of split at index {i} is 0. "
+                    f"This might result in an empty dataset."
+                )
 
     # Cannot verify that dataset is Sized
-    if sum(lengths) != len(dataset):    # type: ignore[arg-type]
-        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+    if sum(lengths) != len(dataset):  # type: ignore[arg-type]
+        raise ValueError(
+            "Sum of input lengths does not equal the length of the input dataset!"
+        )
 
     indices = randperm(sum(lengths), generator=generator).tolist()  # type: ignore[call-overload]
-    return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+    return [
+        Subset(dataset, indices[offset - length : offset])
+        for offset, length in zip(_accumulate(lengths), lengths)
+    ]
 
 
 # https://pytorch.org/vision/main/_modules/torchvision/datasets/coco.html#CocoDetection
@@ -120,7 +122,7 @@ class CocoToSmpDataset(VisionDataset):
 
         self.coco = COCO(annFile)
         self.ids = list(sorted(self.coco.imgs.keys()))
-        
+
     @staticmethod
     def _transform_binarymask_to_distance_mask(gt_mask):
         """
@@ -131,80 +133,88 @@ class CocoToSmpDataset(VisionDataset):
             distance_weight_sum (float): sum af all normalized pixel values within inside of object in binary mask
         """
         # PART 1: Object distance transform
-        dist = ndimage.distance_transform_cdt(gt_mask) # distance_transform_bf is less efficient
+        dist = ndimage.distance_transform_cdt(
+            gt_mask
+        )  # distance_transform_bf is less efficient
         reverse_dist = dist.max() - dist
-        reverse_dist = (reverse_dist * gt_mask) # make outer background zero
-        
+        reverse_dist = reverse_dist * gt_mask  # make outer background zero
+
         # CONSIDER EDGE CASES LIKE EMPTY AND FULL MASK
         if reverse_dist.max() == 0:
-            if gt_mask.max() == 0: # Grount-truth mask is empty (hiç bir pixelde etiket yok)
+            if (
+                gt_mask.max() == 0
+            ):  # Grount-truth mask is empty (hiç bir pixelde etiket yok)
                 # every element in dist is 0
                 # IoU/Distance loss is defined for non-empty classes
-                distance_weight = gt_mask # full of 0s. It doesn't matter since it will be zerout out in loss func
+                distance_weight = gt_mask  # full of 0s. It doesn't matter since it will be zerout out in loss func
                 distance_weight_sum = np.sum(0)
                 return distance_weight, distance_weight_sum
-            elif gt_mask.min() == 1 : # Grount-truth mask is full (fotoğrafın her pixeli etiket)
+            elif (
+                gt_mask.min() == 1
+            ):  # Grount-truth mask is full (fotoğrafın her pixeli etiket)
                 # every element in dist is -1
-                distance_weight = gt_mask # full of 1s
+                distance_weight = gt_mask  # full of 1s
                 distance_weight_sum = np.sum(distance_weight)
                 return distance_weight, distance_weight_sum
             else:
                 # If 1s in mask is really less. Ie: small objects. Eg: gt_mask.sum() = 13
-                distance_weight = gt_mask # very less 1s, too many 0s
+                distance_weight = gt_mask  # very less 1s, too many 0s
                 distance_weight_sum = np.sum(distance_weight)
                 return distance_weight, distance_weight_sum
-        
-        inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
+
+        inner_reverse_dist_n = reverse_dist / reverse_dist.max()  # normalize it
         # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
 
-        # PART 2: Outer distance transform
-        reverse_gt_mask = 1- gt_mask
-
-        # PART 3: Union of inner and outer transforms
-        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
-        # plt.imshow(distance_weight_vis)
-        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
         distance_weight_sum = np.sum(inner_reverse_dist_n)
 
-        return distance_weight, distance_weight_sum
+        return inner_reverse_dist_n, distance_weight_sum
 
     def _load_image(self, id: int) -> Image.Image:
         path = self.coco.loadImgs(id)[0]["file_name"]
         img = np.array(Image.open(os.path.join(self.root, path)).convert("RGB"))
         # If you need to convert to other format HWC -> CHW: img.transpose((-1, 0, 1))
         return img
-    
+
     def _load_mask(self, id: int) -> List[Any]:
-        if not self.coco.getAnnIds(id): # check for empty masks
+        if not self.coco.getAnnIds(id):  # check for empty masks
             # Empty mask case
             h = self.coco.loadImgs(id)[0]["height"]
             w = self.coco.loadImgs(id)[0]["width"]
             arr_2dim = np.zeros((h, w)).astype(np.float32)
-            return arr_2dim # in HW format
+            return arr_2dim  # in HW format
         else:
-             # Non-empty mask case
+            # Non-empty mask case
             ann = self.coco.loadAnns(self.coco.getAnnIds(id))[0]
             arr_2dim = self.coco.annToMask(ann=ann).astype(np.float32)
-            return arr_2dim # in HW format
+            return arr_2dim  # in HW format
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         id = self.ids[index]
         image = self._load_image(id)
         mask = self._load_mask(id)
-        
+
         sample = dict(image=image, mask=mask)
         if self.transforms is not None:
-            sample = self.transforms(**sample)    
-            sample["distance_mask"], sample["distance_mask_sum"] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"])) # change binary mask to distance transformed mask
-            sample["distance_mask"] = np.expand_dims(sample["distance_mask"], 0) # convert to CHW format ie. HW -> 1HW:
-            sample["mask"] = np.expand_dims(sample["mask"], 0) # convert to CHW format ie. HW -> 1HW:    
+            sample = self.transforms(**sample)
+            (
+                sample["distance_mask"],
+                sample["distance_mask_sum"],
+            ) = self._transform_binarymask_to_distance_mask(
+                np.array(sample["mask"])
+            )  # change binary mask to distance transformed mask
+            sample["distance_mask"] = np.expand_dims(
+                sample["distance_mask"], 0
+            )  # convert to CHW format ie. HW -> 1HW:
+            sample["mask"] = np.expand_dims(
+                sample["mask"], 0
+            )  # convert to CHW format ie. HW -> 1HW:
         return sample
-    
+
     def __len__(self) -> int:
         return len(self.ids)
 
 
-# https://pytorch.org/vision/main/_modules/torchvision/datasets/cityscapes.html#Cityscapes
+# https://pytorch.org/vision/main/_modules/torchvision/datasets/cityscapes.html#Cityscapes
 class CityscapesToSmpDataset(Cityscapes):
     """`Cityscapes <http://www.cityscapes-dataset.com/>`_ Dataset.
 
@@ -252,10 +262,11 @@ class CityscapesToSmpDataset(Cityscapes):
 
             img, smnt = dataset[0]
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, target_type="semantic")
-        self.colormap = self._generate_3colormap()
-    
+        self.colormap = self._generate_19colormap()
+
     @staticmethod
     def _transform_binarymask_to_distance_mask(gt_mask):
         """
@@ -266,44 +277,43 @@ class CityscapesToSmpDataset(Cityscapes):
             distance_weight_sum (float): sum af all normalized pixel values within inside of object in binary mask
         """
         # PART 1: Object distance transform
-        dist = ndimage.distance_transform_cdt(gt_mask) # distance_transform_bf is less efficient
+        dist = ndimage.distance_transform_cdt(
+            gt_mask
+        )  # distance_transform_bf is less efficient
         reverse_dist = dist.max() - dist
-        reverse_dist = (reverse_dist * gt_mask) # make outer background zero
-        
+        reverse_dist = reverse_dist * gt_mask  # make outer background zero
+
         # CONSIDER EDGE CASES LIKE EMPTY AND FULL MASK
         if reverse_dist.max() == 0:
-            if gt_mask.max() == 0: # Grount-truth mask is empty (hiç bir pixelde etiket yok)
+            if (
+                gt_mask.max() == 0
+            ):  # Grount-truth mask is empty (hiç bir pixelde etiket yok)
                 # every element in dist is 0
                 # IoU/Distance loss is defined for non-empty classes
-                distance_weight = gt_mask # full of 0s. It doesn't matter since it will be zerout out in loss func
+                distance_weight = gt_mask  # full of 0s. It doesn't matter since it will be zerout out in loss func
                 distance_weight_sum = np.sum(0)
                 return distance_weight, distance_weight_sum
-            elif gt_mask.min() == 1 : # Grount-truth mask is full (fotoğrafın her pixeli etiket)
+            elif (
+                gt_mask.min() == 1
+            ):  # Grount-truth mask is full (fotoğrafın her pixeli etiket)
                 # every element in dist is -1
-                distance_weight = gt_mask # full of 1s
+                distance_weight = gt_mask  # full of 1s
                 distance_weight_sum = np.sum(distance_weight)
                 return distance_weight, distance_weight_sum
             else:
                 # If 1s in mask is really less. Ie: small objects. Eg: gt_mask.sum() = 13
-                distance_weight = gt_mask # very less 1s, too many 0s
+                distance_weight = gt_mask  # very less 1s, too many 0s
                 distance_weight_sum = np.sum(distance_weight)
                 return distance_weight, distance_weight_sum
-        
-        inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
+
+        inner_reverse_dist_n = reverse_dist / reverse_dist.max()  # normalize it
         # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
 
-        # PART 2: Outer distance transform
-        reverse_gt_mask = 1- gt_mask
-
-        # PART 3: Union of inner and outer transforms
-        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
-        # plt.imshow(distance_weight_vis)
-        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
         distance_weight_sum = np.sum(inner_reverse_dist_n)
 
-        return distance_weight, distance_weight_sum
-    
-    # https://github.com/albumentations-team/autoalbument/blob/master/examples/cityscapes/dataset.py
+        return inner_reverse_dist_n, distance_weight_sum
+
+    # https://github.com/albumentations-team/autoalbument/blob/master/examples/cityscapes/dataset.py
     def _generate_19colormap(self):
         # It gives 19 classes
         colormap = {}
@@ -312,12 +322,13 @@ class CityscapesToSmpDataset(Cityscapes):
                 continue
             colormap[class_.train_id] = class_.id
         return colormap
-    
-    
+
     def _convert_to_19segmentation_mask(self, mask):
         # It gives 19 classes
         height, width = mask.shape[:2]
-        segmentation_mask = np.zeros((height, width, len(self.colormap)), dtype=np.float32)
+        segmentation_mask = np.zeros(
+            (height, width, len(self.colormap)), dtype=np.float32
+        )
         for label_index, label in self.colormap.items():
             segmentation_mask[:, :, label_index] = (mask == label).astype(float)
         return segmentation_mask
@@ -330,9 +341,9 @@ class CityscapesToSmpDataset(Cityscapes):
             if class_.category_id in (6, 7):
                 if class_.name not in ("caravan", "trailer", "license plate"):
                     colormap[idx] = class_.id
-                    idx+=1
+                    idx += 1
         return colormap
-    
+
     def _convert_to_8segmentation_mask(self, mask):
         # It gives 8 classes as in Mask-RCNN in this order:
         # person, rider, car, truck, bus, train, mcycle, bicycle
@@ -341,7 +352,7 @@ class CityscapesToSmpDataset(Cityscapes):
         for label_index, label in self.colormap.items():
             segmentation_mask[:, :, label_index] = (mask == label).astype(float)
         return segmentation_mask
-    
+
     def _generate_3colormap(self):
         # It gives 3 classes: person, bicycle, rider
         colormap = {}
@@ -350,9 +361,9 @@ class CityscapesToSmpDataset(Cityscapes):
             if class_.category_id in (6, 7):
                 if class_.name in ("person", "rider", "bicycle"):
                     colormap[idx] = class_.id
-                    idx+=1
+                    idx += 1
         return colormap
-    
+
     def _convert_to_3segmentation_mask(self, mask):
         # It gives 3 classes as in Mask-RCNN in this order:
         # person, rider, car, truck, bus, train, mcycle, bicycle
@@ -361,7 +372,7 @@ class CityscapesToSmpDataset(Cityscapes):
         for label_index, label in self.colormap.items():
             segmentation_mask[:, :, label_index] = (mask == label).astype(float)
         return segmentation_mask
-    
+
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         """
         Args:
@@ -372,7 +383,7 @@ class CityscapesToSmpDataset(Cityscapes):
         """
 
         image = np.array(Image.open(self.images[index]).convert("RGB"))
-        
+
         # Just export semantic segmentation
         targets: Any = []
         for i, t in enumerate(self.target_type):
@@ -381,28 +392,46 @@ class CityscapesToSmpDataset(Cityscapes):
             else:
                 print("target_type can only be 'semantic'")
                 break
-        mask = self._convert_to_3segmentation_mask(target)
-        
+        mask = self._convert_to_19segmentation_mask(target)
+
         sample = dict(image=image, mask=mask)
         if self.transforms is not None:
             sample = self.transforms(**sample)
             # check for multiclass case
-            class_num = sample["mask"].shape[2] # HWC shape
-            if class_num > 1: # multiclass
+            class_num = sample["mask"].shape[2]  # HWC shape
+            if class_num > 1:  # multiclass
                 sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
-                sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()   
+                sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()
                 for idx in range(class_num):
-                    sample["distance_mask"][:, :, idx], sample["distance_mask_sum"][idx] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"][:, :, idx])) # change binary mask to distance transformed mask 
-                sample["distance_mask"] = sample["distance_mask"].transpose(2, 0, 1) # convert HWC to CHW format
-                # import pdb; pdb.set_trace()
-                sample["mask"] = np.array(sample["mask"]).transpose(2, 0, 1) # convert HWC to CHW format
-            else: # binary class
-                sample["distance_mask"], sample["distance_mask_sum"] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"])) # change binary mask to distance transformed mask
-                sample["distance_mask"] = np.expand_dims(sample["distance_mask"], 0) # convert to CHW format ie. HW -> 1HW:
-                sample["mask"] = np.expand_dims(sample["mask"], 0) # convert to CHW format ie. HW -> 1HW:    
+                    (
+                        sample["distance_mask"][:, :, idx],
+                        sample["distance_mask_sum"][idx],
+                    ) = self._transform_binarymask_to_distance_mask(
+                        np.array(sample["mask"][:, :, idx])
+                    )  # change binary mask to distance transformed mask
+                sample["distance_mask"] = sample["distance_mask"].transpose(
+                    2, 0, 1
+                )  # convert HWC to CHW format
+                # import pdb; pdb.set_trace()
+                sample["mask"] = np.array(sample["mask"]).transpose(
+                    2, 0, 1
+                )  # convert HWC to CHW format
+            else:  # binary class
+                (
+                    sample["distance_mask"],
+                    sample["distance_mask_sum"],
+                ) = self._transform_binarymask_to_distance_mask(
+                    np.array(sample["mask"])
+                )  # change binary mask to distance transformed mask
+                sample["distance_mask"] = np.expand_dims(
+                    sample["distance_mask"], 0
+                )  # convert to CHW format ie. HW -> 1HW:
+                sample["mask"] = np.expand_dims(
+                    sample["mask"], 0
+                )  # convert to CHW format ie. HW -> 1HW:
         return sample
 
-    
+
 class DatasetFromSubset(Dataset):
     def __init__(self, subset, transforms=None):
         self.subset = subset
@@ -418,51 +447,59 @@ class DatasetFromSubset(Dataset):
             distance_weight_sum (float): sum af all normalized pixel values within inside of object in binary mask
         """
         # PART 1: Object distance transform
-        dist = ndimage.distance_transform_cdt(gt_mask) # distance_transform_bf is less efficient
+        dist = ndimage.distance_transform_cdt(
+            gt_mask
+        )  # distance_transform_bf is less efficient
         reverse_dist = dist.max() - dist
-        reverse_dist = (reverse_dist * gt_mask) # make outer background zero
-        
+        reverse_dist = reverse_dist * gt_mask  # make outer background zero
+
         # CONSIDER EDGE CASES LIKE EMPTY AND FULL MASK
         if reverse_dist.max() == 0:
-            if gt_mask.max() == 0: # Grount-truth mask is empty (hiç bir pixelde etiket yok)
+            if (
+                gt_mask.max() == 0
+            ):  # Grount-truth mask is empty (hiç bir pixelde etiket yok)
                 # every element in dist is 0
                 # IoU/Distance loss is defined for non-empty classes
-                distance_weight = gt_mask # full of 0s. It doesn't matter since it will be zerout out in loss func
+                distance_weight = gt_mask  # full of 0s. It doesn't matter since it will be zerout out in loss func
                 distance_weight_sum = np.sum(0)
                 return distance_weight, distance_weight_sum
-            elif gt_mask.min() == 1 : # Grount-truth mask is full (fotoğrafın her pixeli etiket)
+            elif (
+                gt_mask.min() == 1
+            ):  # Grount-truth mask is full (fotoğrafın her pixeli etiket)
                 # every element in dist is -1
-                distance_weight = gt_mask # full of 1s
+                distance_weight = gt_mask  # full of 1s
                 distance_weight_sum = np.sum(distance_weight)
                 return distance_weight, distance_weight_sum
             else:
                 # If 1s in mask is really less. Ie: small objects. Eg: gt_mask.sum() = 13
-                distance_weight = gt_mask # very less 1s, too many 0s
+                distance_weight = gt_mask  # very less 1s, too many 0s
                 distance_weight_sum = np.sum(distance_weight)
                 return distance_weight, distance_weight_sum
-        
-        inner_reverse_dist_n = reverse_dist/ reverse_dist.max() # normalize it
+
+        inner_reverse_dist_n = reverse_dist / reverse_dist.max()  # normalize it
         # pprint(f"Inner distance transform metrics: {inner_reverse_dist_n.min()}, {inner_reverse_dist_n.max()}, {inner_reverse_dist_n.mean()}")
 
-        # PART 2: Outer distance transform
-        reverse_gt_mask = 1- gt_mask
-
-        # PART 3: Union of inner and outer transforms
-        distance_weight_vis = inner_reverse_dist_n + reverse_gt_mask # + outer_reverse_dist_n
-        # plt.imshow(distance_weight_vis)
-        distance_weight = inner_reverse_dist_n + reverse_gt_mask * -1 # + outer_reverse_dist_n * -1
         distance_weight_sum = np.sum(inner_reverse_dist_n)
 
-        return distance_weight, distance_weight_sum
-    
+        return inner_reverse_dist_n, distance_weight_sum
+
     def __getitem__(self, index):
         sample = self.subset[index]
         if self.transforms:
-            sample = self.transforms(**sample)  
+            sample = self.transforms(**sample)
 
-        sample["distance_mask"], sample["distance_mask_sum"] = self._transform_binarymask_to_distance_mask(np.array(sample["mask"])) # change binary mask to distance transformed mask
-        sample["distance_mask"] = np.expand_dims(sample["distance_mask"], 0) # convert to CHW format ie. HW -> 1HW:        
-        sample["mask"] = np.expand_dims(sample["mask"], 0) # convert to CHW format ie. HW -> 1HW:
+        (
+            sample["distance_mask"],
+            sample["distance_mask_sum"],
+        ) = self._transform_binarymask_to_distance_mask(
+            np.array(sample["mask"])
+        )  # change binary mask to distance transformed mask
+        sample["distance_mask"] = np.expand_dims(
+            sample["distance_mask"], 0
+        )  # convert to CHW format ie. HW -> 1HW:
+        sample["mask"] = np.expand_dims(
+            sample["mask"], 0
+        )  # convert to CHW format ie. HW -> 1HW:
         return sample
 
     def __len__(self):
