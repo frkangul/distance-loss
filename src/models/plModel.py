@@ -104,13 +104,7 @@ class ImageSegModel(pl.LightningModule):
         assert y_distance.max() <= 1.0 and y_distance.min() >= -1    
         
         logits_y = self(x) # it is actually self.forward(x)
-        # Lets compute metrics for some threshold. First convert mask values to probabilities, then apply thresholding
-        prob_y = logits_y.sigmoid()
-        pred_y_th = (prob_y > 0.95).float()
-        
-        boundary_y = mask_to_boundary_tensor(y, dilation_ratio=0.02)
-        # boundary_pred_y = mask_to_boundary_tensor(prob_y, dilation_ratio=0.02)
-   
+
         if self.cfg.exp.loss == "dist_transform":
             loss = self.loss(logits_y, y_distance, y_distance_sum, y)
         elif self.cfg.exp.loss == "dice&bce":
@@ -121,21 +115,30 @@ class ImageSegModel(pl.LightningModule):
             loss = self.loss(logits_y, y)
         self.log(f"{stage}_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        # We will compute IoU metric by two ways
-        #   1. dataset-wise
-        #   2. image-wise
-        # but for now we just compute true positive, false positive, false negative and true negative 'pixels' for each image and class
-        # these values will be aggregated in the end of an epoch
-        tp, fp, fn, tn = smp.metrics.get_stats(pred_y_th.long(), y.long(), mode=self.cfg.dataset.mode, num_classes=self.cfg.dataset.output_class_num)
-        
-        # Extract tp, fp, fn, tn for boundary iou 
-        boundary_pred_y_th = mask_to_boundary_tensor(pred_y_th, dilation_ratio=0.02)
-        b_tp, b_fp, b_fn, b_tn = smp.metrics.get_stats(boundary_pred_y_th.long(), boundary_y.long(), mode=self.cfg.dataset.mode, num_classes=self.cfg.dataset.output_class_num)
-        
-        # Calculate distance transform evaluation metric here. Do not concaterate in the epoch_end and then evaluate since it will require more computation.
-        distance_transform_metric = 1- self.distance_transform_metric(pred_y_th, y_distance, y_distance_sum, y)
-        self.log(f"{stage}_distance_transform_evalmetric", distance_transform_metric, on_step=False, on_epoch=True, prog_bar=True)
-        
+        with torch.no_grad():
+            # Lets compute metrics for some threshold. First convert mask values to probabilities, then apply thresholding
+            prob_y = logits_y.sigmoid()
+            pred_y_th = (prob_y > 0.95).float()
+            
+            boundary_y = mask_to_boundary_tensor(y, dilation_ratio=0.02)
+            # boundary_pred_y = mask_to_boundary_tensor(prob_y, dilation_ratio=0.02)
+
+            # We will compute IoU metric by two ways
+            #   1. dataset-wise
+            #   2. image-wise
+            # but for now we just compute true positive, false positive, false negative and true negative 'pixels' for each image and class
+            # these values will be aggregated in the end of an epoch
+            tp, fp, fn, tn = smp.metrics.get_stats(pred_y_th.long(), y.long(), mode=self.cfg.dataset.mode, num_classes=self.cfg.dataset.output_class_num)
+            
+            # Extract tp, fp, fn, tn for boundary iou 
+            boundary_pred_y_th = mask_to_boundary_tensor(pred_y_th, dilation_ratio=0.02)
+            b_tp, b_fp, b_fn, b_tn = smp.metrics.get_stats(boundary_pred_y_th.long(), boundary_y.long(), mode=self.cfg.dataset.mode, num_classes=self.cfg.dataset.output_class_num)
+            
+            # Calculate distance transform evaluation metric here. Do not concaterate in the epoch_end and then evaluate since it will require more computation.
+            # distance_transform_metric = 1- self.distance_transform_metric(pred_y_th, y_distance, y_distance_sum, y)
+            # self.log(f"{stage}_distance_transform_evalmetric", distance_transform_metric, on_step=False, on_epoch=True, prog_bar=True)
+        del x, y, y_distance, y_distance_sum, h, w, logits_y, prob_y, pred_y_th, boundary_y, boundary_pred_y_th
+        torch.cuda.empty_cache()
         return {
             "loss": loss,
             "tp": tp,
@@ -146,7 +149,6 @@ class ImageSegModel(pl.LightningModule):
             "b_fp": b_fp,
             "b_fn": b_fn,
             "b_tn": b_tn,
-            "prob_y": prob_y
         }
      
     def training_step(self, batch, batch_idx):
@@ -174,58 +176,60 @@ class ImageSegModel(pl.LightningModule):
         return self._shared_step_end(batch_parts) 
 
     def _shared_epoch_end(self, step_outputs, stage):
-        # outputs are coming from the result or trainin/validation/test steps respectively
-        # aggregate step metrics
-        tp = torch.cat([x["tp"] for x in step_outputs])
-        fp = torch.cat([x["fp"] for x in step_outputs])
-        fn = torch.cat([x["fn"] for x in step_outputs])
-        tn = torch.cat([x["tn"] for x in step_outputs])
-        b_tp = torch.cat([x["b_tp"] for x in step_outputs])
-        b_fp = torch.cat([x["b_fp"] for x in step_outputs])
-        b_fn = torch.cat([x["b_fn"] for x in step_outputs])
-        b_tn = torch.cat([x["b_tn"] for x in step_outputs])
+        with torch.no_grad():
+            # outputs are coming from the result or trainin/validation/test steps respectively
+            # aggregate step metrics
+            tp = torch.cat([x["tp"] for x in step_outputs])
+            fp = torch.cat([x["fp"] for x in step_outputs])
+            fn = torch.cat([x["fn"] for x in step_outputs])
+            tn = torch.cat([x["tn"] for x in step_outputs])
+            b_tp = torch.cat([x["b_tp"] for x in step_outputs])
+            b_fp = torch.cat([x["b_fp"] for x in step_outputs])
+            b_fn = torch.cat([x["b_fn"] for x in step_outputs])
+            b_tn = torch.cat([x["b_tn"] for x in step_outputs])
 
-        # per image IoU means that we first calculate IoU score for each image and then compute mean over these scores
-        per_image_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro-imagewise")
-        
-        # dataset IoU means that we aggregate intersection and union over whole dataset and then compute IoU score. 
-        # The difference between dataset_iou and per_image_iou scores in this particular case will not be much, 
-        # however for dataset with "empty" images (images without target class) a large gap could be observed. 
-        # Empty images influence a lot on per_image_iou and much less on dataset_iou.
-        dataset_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro")
-        
-        per_image_dice = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro-imagewise")
-        dataset_dice = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro")
-        
-        per_image_fbeta = smp.metrics.fbeta_score(tp, fp, fn, tn, reduction="micro-imagewise")
-        dataset_fbeta = smp.metrics.fbeta_score(tp, fp, fn, tn, reduction="micro")
-        
-        per_image_sensitivity= smp.metrics.sensitivity(tp, fp, fn, tn, reduction="micro-imagewise")
-        dataset_sensitivity = smp.metrics.sensitivity(tp, fp, fn, tn, reduction="micro")
-        
-        per_image_specificity = smp.metrics.specificity(tp, fp, fn, tn, reduction="micro-imagewise")
-        dataset_specificity = smp.metrics.specificity(tp, fp, fn, tn, reduction="micro")
-        
-        per_image_bIoU = smp.metrics.iou_score(b_tp, b_fp, b_fn, b_tn, reduction="micro-imagewise")
-        dataset_bIoU = smp.metrics.iou_score(b_tp, b_fp, b_fn, b_tn, reduction="micro")
-        
-        metrics = {
-            f"{stage}_per_image_iou": per_image_iou,
-            f"{stage}_dataset_iou": dataset_iou,
-            f"{stage}_per_image_dice": per_image_dice,
-            f"{stage}_dataset_dice": dataset_dice,
-            f"{stage}_per_image_fbeta": per_image_fbeta,
-            f"{stage}_dataset_fbeta": dataset_fbeta,
-            f"{stage}_per_image_sensitivity": per_image_sensitivity,
-            f"{stage}_dataset_sensitivity": dataset_sensitivity,
-            f"{stage}_per_image_specificity": per_image_specificity,
-            f"{stage}_dataset_specificity": dataset_specificity,
-            f"{stage}_per_image_bIoU": per_image_bIoU,
-            f"{stage}_dataset_bIoU": dataset_bIoU,
-        }
+            # per image IoU means that we first calculate IoU score for each image and then compute mean over these scores
+            per_image_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro-imagewise")
+            
+            # dataset IoU means that we aggregate intersection and union over whole dataset and then compute IoU score. 
+            # The difference between dataset_iou and per_image_iou scores in this particular case will not be much, 
+            # however for dataset with "empty" images (images without target class) a large gap could be observed. 
+            # Empty images influence a lot on per_image_iou and much less on dataset_iou.
+            dataset_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro")
+            
+            per_image_dice = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro-imagewise")
+            dataset_dice = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro")
+            
+            per_image_fbeta = smp.metrics.fbeta_score(tp, fp, fn, tn, reduction="micro-imagewise")
+            dataset_fbeta = smp.metrics.fbeta_score(tp, fp, fn, tn, reduction="micro")
+            
+            per_image_sensitivity= smp.metrics.sensitivity(tp, fp, fn, tn, reduction="micro-imagewise")
+            dataset_sensitivity = smp.metrics.sensitivity(tp, fp, fn, tn, reduction="micro")
+            
+            per_image_specificity = smp.metrics.specificity(tp, fp, fn, tn, reduction="micro-imagewise")
+            dataset_specificity = smp.metrics.specificity(tp, fp, fn, tn, reduction="micro")
+            
+            per_image_bIoU = smp.metrics.iou_score(b_tp, b_fp, b_fn, b_tn, reduction="micro-imagewise")
+            dataset_bIoU = smp.metrics.iou_score(b_tp, b_fp, b_fn, b_tn, reduction="micro")
+            
+            metrics = {
+                f"{stage}_per_image_iou": per_image_iou,
+                f"{stage}_dataset_iou": dataset_iou,
+                f"{stage}_per_image_dice": per_image_dice,
+                f"{stage}_dataset_dice": dataset_dice,
+                f"{stage}_per_image_fbeta": per_image_fbeta,
+                f"{stage}_dataset_fbeta": dataset_fbeta,
+                f"{stage}_per_image_sensitivity": per_image_sensitivity,
+                f"{stage}_dataset_sensitivity": dataset_sensitivity,
+                f"{stage}_per_image_specificity": per_image_specificity,
+                f"{stage}_dataset_specificity": dataset_specificity,
+                f"{stage}_per_image_bIoU": per_image_bIoU,
+                f"{stage}_dataset_bIoU": dataset_bIoU,
+            }
         
         self.log_dict(metrics, prog_bar=True)
-    
+        del tp, fp, fn, tn, b_tp, b_fp, b_fn, b_tn, per_image_iou, dataset_iou, per_image_dice, dataset_dice, per_image_fbeta, dataset_fbeta, per_image_sensitivity, dataset_sensitivity, per_image_specificity, dataset_specificity, per_image_bIoU, dataset_bIoU, metrics
+
     def training_epoch_end(self, training_step_outputs):
         return self._shared_epoch_end(training_step_outputs, "train")
 
