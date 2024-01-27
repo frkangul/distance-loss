@@ -229,7 +229,8 @@ class ImageSegModel(pl.LightningModule):
         
         self.log_dict(metrics, prog_bar=True)
         del tp, fp, fn, tn, b_tp, b_fp, b_fn, b_tn, per_image_iou, dataset_iou, per_image_dice, dataset_dice, per_image_fbeta, dataset_fbeta, per_image_sensitivity, dataset_sensitivity, per_image_specificity, dataset_specificity, per_image_bIoU, dataset_bIoU, metrics
-
+        torch.cuda.empty_cache()
+        
     def training_epoch_end(self, training_step_outputs):
         return self._shared_epoch_end(training_step_outputs, "train")
 
