@@ -28,12 +28,6 @@ conda activate distance-loss
 ## Configuration
 The project uses YAML configuration files located in the config directory. You can specify the dataset, server, and experiment parameters in config.yaml. Dataset-specific parameters can be set in `config/dataset/<dataset_name>.yaml`, and server-specific parameters can be set in `config/server/<server_name>.yaml`.
 
-You need to connect to your WANDB accout. Generate `<your_wandb_api_key>` from wandb website and add it into at the end of .bashrc file:
-
-```bash
-export WANDB=<api-key>
-```
-
 Create a `.env` file in the root directory of the project. You need to connect to your WANDB accout. Generate WANDB API key from wandb website and add it into `.env` file as  `<your_wandb_api_key>`. See below:
 
 ```bash
