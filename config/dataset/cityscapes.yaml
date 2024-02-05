@@ -1,10 +1,10 @@
 name: coco-just-train
-dir: ./data/coco_ann_05_02_24/
+dir: /kaggle/input/start-up-data-v1/coco_ann_05_02_24
 output_class_num: 2
 mode: multilabel
 transform:
   image_resize_h: 640
-  image_resize_w: 800
+  image_resize_w: 640
 train_dl_batchsize: 32
 val_dl_batchsize: 32
 test_dl_batchsize: 32
