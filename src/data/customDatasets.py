@@ -123,6 +123,9 @@ class CocoToSmpDataset(VisionDataset):
         self.coco = COCO(annFile)
         self.ids = list(sorted(self.coco.imgs.keys()))
 
+        cats = self.coco.loadCats(self.coco.getCatIds())
+        self.cat_names_list = [cat['id'] for cat in cats]
+
     @staticmethod
     def _transform_binarymask_to_distance_mask(gt_mask):
         """
@@ -176,21 +179,20 @@ class CocoToSmpDataset(VisionDataset):
         return img
 
     def _load_mask(self, id: int) -> List[Any]:
+        num_class = len(self.cat_names_list)
         height = self.coco.loadImgs(id)[0]["height"]
         width = self.coco.loadImgs(id)[0]["width"]
-        if not self.coco.getAnnIds(id):  # check for empty masks
-            arr_2dim = np.zeros((height, width)).astype(np.float32)
-        else:
-            # Non-empty mask case
-            all_ann = self.coco.loadAnns(self.coco.getAnnIds(id))
-            if len(all_ann) == 1: # if there is only single class in mask
-                ann = all_ann[0]
-                arr_2dim = self.coco.annToMask(ann=ann).astype(np.float32)
-            elif len(all_ann) > 1: # if there is multi classes in mask
-                arr_2dim = np.zeros((height, width, len(all_ann)), dtype=np.float32)
-                for idx, sub_ann in enumerate(all_ann):
-                    arr_2dim[:, :, idx] = self.coco.annToMask(ann=sub_ann).astype(np.float32)
-        return arr_2dim  # in HW format
+        
+        all_ann = self.coco.loadAnns(self.coco.getAnnIds(id))
+        # Generate empty mask at first
+        arr_2dim = np.zeros((height, width, num_class), dtype=np.float32)
+        # Iterate over all annotations for an image    
+        for ann in all_ann:
+            # Iterate over each category name. Remember that idx of mask is w.r.t. the order of self.cat_names_list
+            for idx, category_name in enumerate(self.cat_names_list):    
+                if ann['category_id'] == category_name:
+                    arr_2dim[:,:,idx] = self.coco.annToMask(ann=ann).astype(np.float32)
+        return arr_2dim # in HW format
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         id = self.ids[index]
