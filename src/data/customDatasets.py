@@ -511,19 +511,38 @@ class DatasetFromSubset(Dataset):
         sample = self.subset[index]
         if self.transforms:
             sample = self.transforms(**sample)
-
-        (
-            sample["distance_mask"],
-            sample["distance_mask_sum"],
-        ) = self._transform_binarymask_to_distance_mask(
-            np.array(sample["mask"])
-        )  # change binary mask to distance transformed mask
-        sample["distance_mask"] = np.expand_dims(
-            sample["distance_mask"], 0
-        )  # convert to CHW format ie. HW -> 1HW:
-        sample["mask"] = np.expand_dims(
-            sample["mask"], 0
-        )  # convert to CHW format ie. HW -> 1HW:
+            # check for multiclass case
+            class_num = sample["mask"].shape[2]  # HWC shape
+            if class_num > 1:  # multiclass
+                sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
+                sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()
+                for idx in range(class_num):
+                    (
+                        sample["distance_mask"][:, :, idx],
+                        sample["distance_mask_sum"][idx],
+                    ) = self._transform_binarymask_to_distance_mask(
+                        np.array(sample["mask"][:, :, idx])
+                    )  # change binary mask to distance transformed mask
+                sample["distance_mask"] = sample["distance_mask"].transpose(
+                    2, 0, 1
+                )  # convert HWC to CHW format
+                # import pdb; pdb.set_trace()
+                sample["mask"] = np.array(sample["mask"]).transpose(
+                    2, 0, 1
+                )  # convert HWC to CHW format
+            else:  # binary class
+                (
+                    sample["distance_mask"],
+                    sample["distance_mask_sum"],
+                ) = self._transform_binarymask_to_distance_mask(
+                    np.array(sample["mask"])
+                )  # change binary mask to distance transformed mask
+                sample["distance_mask"] = np.expand_dims(
+                    sample["distance_mask"], 0
+                )  # convert to CHW format ie. HW -> 1HW:
+                sample["mask"] = np.expand_dims(
+                    sample["mask"], 0
+                )  # convert to CHW format ie. HW -> 1HW:
         return sample
 
     def __len__(self):
