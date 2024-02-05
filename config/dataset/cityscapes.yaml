@@ -3,8 +3,8 @@ dir: ./data/coco_ann_05_02_24/
 output_class_num: 2
 mode: multilabel
 transform:
-  image_resize_h: 512
-  image_resize_w: 512
+  image_resize_h: 640
+  image_resize_w: 800
 train_dl_batchsize: 32
 val_dl_batchsize: 32
 test_dl_batchsize: 32
