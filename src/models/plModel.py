@@ -398,7 +398,31 @@ class ImageSegModel(pl.LightningModule):
             # Assign test dataset for use in dataloader(s)
             if stage == "test" or stage is None:
                 pass  # There is just private test data
-
+        elif self.cfg.dataset.name == "coco-just-train":
+            if stage == "fit" or stage is None:
+                full_ds = CocoToSmpDataset(
+                    root=os.path.join(self.cfg.dataset.dir, "aracdisi"),
+                    annFile=os.path.join(
+                        self.cfg.dataset.dir, "annotations_train.json"
+                    ),
+                )
+                # Train-val split before appliying transformations
+                train_subset, val_subset = random_split(
+                    full_ds,
+                    [0.8, 0.2],
+                    generator=torch.Generator().manual_seed(self.cfg.exp.SEED),
+                )
+                # Apply transformations to each subset
+                self.train_ds = DatasetFromSubset(
+                    train_subset, transforms=self.train_transform
+                )
+                self.val_ds = DatasetFromSubset(
+                    val_subset, transforms=self.val_transform
+                )
+            # Assign test dataset for use in dataloader(s)
+            if stage == "test" or stage is None:
+                pass  # There is no test data
+                
     def train_dataloader(self):
         return DataLoader(
             self.train_ds,
