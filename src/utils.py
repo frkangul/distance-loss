@@ -77,7 +77,7 @@ def setup_wandb_and_logger(cfg):
     # It calls wandb.init() when the Trainer starts and wandb.finish() when the Trainer finishes
     wandb_logger = WandbLogger(
         project=cfg.exp.wandb_proj,
-        name=f"{cfg.dataset.name}/{cfg.exp.model}/{cfg.exp.encoder}/{cfg.exp.loss}/{cfg.exp.name}",
+        name=f"{cfg.dataset.transform.image_resize_w}x{cfg.dataset.transform.image_resize_h}/{cfg.exp.loss}/{cfg.exp.name}",
         group=f"{cfg.dataset.name}/{cfg.exp.model}/{cfg.exp.encoder}",
         log_model="all",  # model checkpoints are logged during training
     )
