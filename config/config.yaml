@@ -3,7 +3,7 @@ defaults:
   - server: azure_A100
 
 exp:
-  wandb_proj: foreground-car-segm
+  wandb_proj: start-up-project
   name: A100_512_512_DIST_FIX_APPX_DIFF_SEED
   model: DeepLabV3Plus # DeepLabV3Plus, UnetPlusPlus, Unet, FPN
   encoder: resnet50 # mobilenet_v2, efficientnet-b5, resnet34, mit_b1 

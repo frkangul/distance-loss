@@ -1,6 +1,6 @@
-name: Cityscapes
-dir: ./data/cityscapes/
-output_class_num: 19
+name: coco-just-train
+dir: ./data/coco_ann_05_02_24/
+output_class_num: 2
 mode: multilabel
 transform:
   image_resize_h: 512
