@@ -176,40 +176,64 @@ class CocoToSmpDataset(VisionDataset):
         return img
 
     def _load_mask(self, id: int) -> List[Any]:
+        height = self.coco.loadImgs(id)[0]["height"]
+        width = self.coco.loadImgs(id)[0]["width"]
         if not self.coco.getAnnIds(id):  # check for empty masks
-            # Empty mask case
-            h = self.coco.loadImgs(id)[0]["height"]
-            w = self.coco.loadImgs(id)[0]["width"]
-            arr_2dim = np.zeros((h, w)).astype(np.float32)
-            return arr_2dim  # in HW format
+            arr_2dim = np.zeros((height, width)).astype(np.float32)
         else:
             # Non-empty mask case
-            ann = self.coco.loadAnns(self.coco.getAnnIds(id))[0]
-            arr_2dim = self.coco.annToMask(ann=ann).astype(np.float32)
-            return arr_2dim  # in HW format
+            all_ann = self.coco.loadAnns(self.coco.getAnnIds(id))
+            if len(all_ann) == 1: # if there is only single class in mask
+                ann = all_ann[0]
+                arr_2dim = self.coco.annToMask(ann=ann).astype(np.float32)
+            elif len(all_ann) > 1: # if there is multi classes in mask
+                arr_2dim = np.zeros((height, width, len(all_ann)), dtype=np.float32)
+                for idx, sub_ann in enumerate(all_ann):
+                    arr_2dim[:, :, idx] = self.coco.annToMask(ann=sub_ann).astype(np.float32)
+        return arr_2dim  # in HW format
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         id = self.ids[index]
         image = self._load_image(id)
         mask = self._load_mask(id)
-
+        
         sample = dict(image=image, mask=mask)
         if self.transforms is not None:
             sample = self.transforms(**sample)
-            (
-                sample["distance_mask"],
-                sample["distance_mask_sum"],
-            ) = self._transform_binarymask_to_distance_mask(
-                np.array(sample["mask"])
-            )  # change binary mask to distance transformed mask
-            sample["distance_mask"] = np.expand_dims(
-                sample["distance_mask"], 0
-            )  # convert to CHW format ie. HW -> 1HW:
-            sample["mask"] = np.expand_dims(
-                sample["mask"], 0
-            )  # convert to CHW format ie. HW -> 1HW:
+            # check for multiclass case
+            class_num = sample["mask"].shape[2]  # HWC shape
+            if class_num > 1:  # multiclass
+                sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
+                sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()
+                for idx in range(class_num):
+                    (
+                        sample["distance_mask"][:, :, idx],
+                        sample["distance_mask_sum"][idx],
+                    ) = self._transform_binarymask_to_distance_mask(
+                        np.array(sample["mask"][:, :, idx])
+                    )  # change binary mask to distance transformed mask
+                sample["distance_mask"] = sample["distance_mask"].transpose(
+                    2, 0, 1
+                )  # convert HWC to CHW format
+                # import pdb; pdb.set_trace()
+                sample["mask"] = np.array(sample["mask"]).transpose(
+                    2, 0, 1
+                )  # convert HWC to CHW format
+            else:  # binary class
+                (
+                    sample["distance_mask"],
+                    sample["distance_mask_sum"],
+                ) = self._transform_binarymask_to_distance_mask(
+                    np.array(sample["mask"])
+                )  # change binary mask to distance transformed mask
+                sample["distance_mask"] = np.expand_dims(
+                    sample["distance_mask"], 0
+                )  # convert to CHW format ie. HW -> 1HW:
+                sample["mask"] = np.expand_dims(
+                    sample["mask"], 0
+                )  # convert to CHW format ie. HW -> 1HW:
         return sample
-
+        
     def __len__(self) -> int:
         return len(self.ids)
 
