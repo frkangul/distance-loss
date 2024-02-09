@@ -125,6 +125,7 @@ class CocoToSmpDataset(VisionDataset):
 
         cats = self.coco.loadCats(self.coco.getCatIds())
         self.cat_names_list = [cat['id'] for cat in cats]
+        self.cat_names_list = self.cat_names_list.pop(1) # Keep just first class
 
     @staticmethod
     def _transform_binarymask_to_distance_mask(gt_mask):
@@ -192,7 +193,11 @@ class CocoToSmpDataset(VisionDataset):
             for idx, category_name in enumerate(self.cat_names_list):    
                 if ann['category_id'] == category_name:
                     arr_2dim[:,:,idx] = self.coco.annToMask(ann=ann).astype(np.float32)
-        return arr_2dim # in HW format
+        if num_class == 1:
+            # Return (H, W) shape array if there is only single class
+            return arr_2dim[:,:,0] # in HW format
+        else:
+            return arr_2dim # in HWC format
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         id = self.ids[index]
