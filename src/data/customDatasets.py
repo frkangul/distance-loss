@@ -125,7 +125,7 @@ class CocoToSmpDataset(VisionDataset):
 
         cats = self.coco.loadCats(self.coco.getCatIds())
         self.cat_names_list = [cat['id'] for cat in cats]
-        self.cat_names_list.pop(1) # Keep just first class
+        self.cat_names_list.pop(0) # Keep just second class
 
     @staticmethod
     def _transform_binarymask_to_distance_mask(gt_mask):
