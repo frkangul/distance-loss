@@ -175,7 +175,6 @@ class ImageSegModel(pl.LightningModule):
             h,
             w,
             logits_y,
-            prob_y,
             pred_y_th,
             boundary_y,
             boundary_pred_y_th,
@@ -191,6 +190,7 @@ class ImageSegModel(pl.LightningModule):
             "b_fp": b_fp,
             "b_fn": b_fn,
             "b_tn": b_tn,
+            "prob_y": prob_y,
         }
 
     def training_step(self, batch, batch_idx):
