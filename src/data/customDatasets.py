@@ -208,7 +208,10 @@ class CocoToSmpDataset(VisionDataset):
         if self.transforms is not None:
             sample = self.transforms(**sample)
             # check for multiclass case
-            class_num = sample["mask"].shape[2]  # HWC shape
+            if sample["mask"].ndim == 3: # multiclass case
+                class_num = sample["mask"].shape[2]  # HWC shape
+            elif sample["mask"].ndim == 1: # single class case
+                class_num = 1 # HW shape
             if class_num > 1:  # multiclass
                 sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
                 sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()
@@ -430,6 +433,10 @@ class CityscapesToSmpDataset(Cityscapes):
             sample = self.transforms(**sample)
             # check for multiclass case
             class_num = sample["mask"].shape[2]  # HWC shape
+            if sample["mask"].ndim == 3: # multiclass case
+                class_num = sample["mask"].shape[2]  # HWC shape
+            elif sample["mask"].ndim == 1: # single class case
+                class_num = 1 # HW shape
             if class_num > 1:  # multiclass
                 sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
                 sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()
@@ -520,6 +527,10 @@ class DatasetFromSubset(Dataset):
             sample = self.transforms(**sample)
             # check for multiclass case
             class_num = sample["mask"].shape[2]  # HWC shape
+            if sample["mask"].ndim == 3: # multiclass case
+                class_num = sample["mask"].shape[2]  # HWC shape
+            elif sample["mask"].ndim == 1: # single class case
+                class_num = 1 # HW shape
             if class_num > 1:  # multiclass
                 sample["distance_mask"] = torch.zeros_like(sample["mask"]).numpy()
                 sample["distance_mask_sum"] = torch.zeros((class_num, 1)).numpy()
