@@ -26,4 +26,4 @@ checkpoint:
 vis:
   img_num: 8
   val_batch_id: 5
-  dir: ./models/cityscapes_dist_transform_unet_r50_1024
+  dir: /kaggle/working
