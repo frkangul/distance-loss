@@ -432,7 +432,6 @@ class CityscapesToSmpDataset(Cityscapes):
         if self.transforms is not None:
             sample = self.transforms(**sample)
             # check for multiclass case
-            class_num = sample["mask"].shape[2]  # HWC shape
             if sample["mask"].ndim == 3: # multiclass case
                 class_num = sample["mask"].shape[2]  # HWC shape
             elif sample["mask"].ndim == 1: # single class case
@@ -526,7 +525,6 @@ class DatasetFromSubset(Dataset):
         if self.transforms:
             sample = self.transforms(**sample)
             # check for multiclass case
-            class_num = sample["mask"].shape[2]  # HWC shape
             if sample["mask"].ndim == 3: # multiclass case
                 class_num = sample["mask"].shape[2]  # HWC shape
             elif sample["mask"].ndim == 1: # single class case
