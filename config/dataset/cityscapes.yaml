@@ -1,7 +1,7 @@
 name: coco-just-train
 dir: /kaggle/input/start-up-data-v1/coco_ann_05_02_24
-output_class_num: 2
-mode: multilabel
+output_class_num: 1
+mode: binary
 transform:
   image_resize_h: 640
   image_resize_w: 640
