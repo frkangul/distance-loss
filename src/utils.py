@@ -129,8 +129,8 @@ def setup_pl_callbacks(cfg):
         lr_monitor,
         # ReduceLROnPlateauOptCallback()
     ]
-    if cfg.dataset.mode == "binary":
-        callbacks.append(LogSegPredictionCallback())
+    # if cfg.dataset.mode == "binary":
+    #     callbacks.append(LogSegPredictionCallback())
 
     return callbacks
 
